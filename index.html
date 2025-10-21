@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>大老二 — RWD 完整版</title>
+<title>大老二 — RWD 修正版</title>
 <style>
   :root{
     --card-w: 56px;
@@ -19,7 +19,7 @@
   .table{position:relative;width:100%;height:100svh;background:rgba(255,255,255,.05)}
   .player{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center}
   .name{font-size:14px;margin-bottom:4px;opacity:.9}
-  .hand{display:flex;gap:var(--gap);max-width:96vw;overflow-x:auto;padding:2px}
+  .hand{display:flex;gap:var(--gap);max-width:96vw;overflow-x:auto;padding:2px;touch-action:manipulation}
   .hand::-webkit-scrollbar{height:6px}
   .card{
     width:var(--card-w);height:var(--card-h);
@@ -29,8 +29,8 @@
   }
   .card.♥,.card.♦{color:#d11}
   .selected{transform:translateY(-10px);border-color:#f5c542;box-shadow:0 0 8px #f5c542}
-  .dim{opacity:.55}
-  #bottom{bottom:calc(env(safe-area-inset-bottom,0) + 10px);left:50%;transform:translateX(-50%);flex-direction:column}
+  .dim{opacity:.55;pointer-events:none}
+  #bottom{bottom:calc(env(safe-area-inset-bottom,0) + 10px);left:50%;transform:translateX(-50%);flex-direction:column;z-index:3}
   #top{top:10px;left:50%;transform:translateX(-50%)}
   #left{top:50%;left:10px;transform:translateY(-50%) rotate(-90deg)}
   #right{top:50%;right:10px;transform:translateY(-50%) rotate(90deg)}
@@ -46,6 +46,7 @@
     border:none;border-radius:10px;background:#3498db;color:#fff;cursor:pointer
   }
   button:hover{background:#2980b9}
+  button:disabled{opacity:.5;cursor:not-allowed;filter:grayscale(.2)}
   .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,.25)}
   .count{font-size:12px;background:#22303a;border-radius:6px;padding:2px 6px;margin-top:4px}
   #log{
@@ -59,7 +60,7 @@
   #hintPanel{
     position:absolute;bottom:calc(env(safe-area-inset-bottom,0) + 90px);left:50%;transform:translateX(-50%);
     width:var(--panel-w);max-width:960px;background:rgba(0,0,0,.72);
-    border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px;display:none
+    border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px;display:none;z-index:4
   }
   #hintPanel h3{margin:4px 0 8px;font-size:14px;color:#ffdd55}
   .combo-list{display:flex;flex-wrap:wrap;gap:6px;max-height:160px;overflow-y:auto}
@@ -88,6 +89,8 @@
     width:100vw;left:0;transform:none;bottom:calc(env(safe-area-inset-bottom,0) + var(--bar-h));
     border-radius:14px 14px 0 0; padding-bottom:calc(env(safe-area-inset-bottom,0) + 10px)
   }
+  /* 提升底部手牌避免被工具列遮住 */
+  body.is-mobile #bottom{ bottom:calc(env(safe-area-inset-bottom,0) + var(--bar-h) + 12px) }
 </style>
 </head>
 <body>
@@ -106,15 +109,15 @@
       <div id="info">載入中...</div>
       <div id="last-play"></div>
       <div class="controls">
-        <button id="playBtn">出牌</button>
-        <button id="passBtn">PASS</button>
+        <button id="playBtn" disabled>出牌</button>
+        <button id="passBtn" disabled>PASS</button>
         <button id="hintBtn">顯示提示</button>
         <button id="dealBtn">重新發牌</button>
       </div>
     </div>
     <div id="actionBar" role="toolbar" aria-label="操作列">
-      <button id="playBtn_m">出牌</button>
-      <button id="passBtn_m">PASS</button>
+      <button id="playBtn_m" disabled>出牌</button>
+      <button id="passBtn_m" disabled>PASS</button>
       <button id="hintBtn_m">可出</button>
       <button id="dealBtn_m">重發</button>
     </div>
@@ -176,8 +179,13 @@ function render(){
     players[i].forEach(c=>{
       const d=document.createElement('div');
       d.className=`card ${c.suit}`; d.textContent=c.suit+c.rank;
-      if(i===0) d.onclick=()=>d.classList.toggle('selected');
-      else d.classList.add('dim');
+      if(i===0){
+        const toggle=()=>d.classList.toggle('selected');
+        d.addEventListener('click', toggle);
+        d.addEventListener('pointerup', toggle, {passive:true});
+      } else {
+        d.classList.add('dim');
+      }
       area.appendChild(d);
     });
   });
@@ -186,6 +194,16 @@ function render(){
   document.getElementById('cnt-top').innerText=players[2].length;
   document.getElementById('cnt-left').innerText=players[3].length;
 }
+
+function updateTurnUI(){
+  const mine = (turn===0);
+  ['playBtn','passBtn','playBtn_m','passBtn_m'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.disabled = !mine;
+  });
+  info(mine ? '輪到你' : `等待 ${names[turn]} 出牌…`);
+}
+
 function deal(){
   names=['你',randName(),randName(),randName()];
   document.getElementById('name-right').innerText=names[1];
@@ -197,7 +215,8 @@ function deal(){
   for(let i=0;i<52;i++) players[i%4].push(deck[i]);
   players.forEach(p=>p.sort(compareCard));
   currentPlay=null; lastWinner=-1; firstTrick=true; turn=findStart();
-  render(); info(`持有 ♣3 的玩家（${names[turn]}）先攻，且首攻必須包含 ♣3`); playSound('start');
+  render(); updateTurnUI();
+  info(`持有 ♣3 的玩家（${names[turn]}）先攻，且首攻必須包含 ♣3`); playSound('start');
   if(turn!==0) setTimeout(aiPlay,700);
 }
 
@@ -302,8 +321,21 @@ function next(){
   if(turn<0) return;
   turn=(turn+1)%4;
   if(turn===lastWinner){ currentPlay=null; info(`${names[turn]} 重新出牌`); }
-  else if(turn===0) info('輪到你');
+  updateTurnUI();
   if(turn!==0) setTimeout(aiPlay,800);
+}
+function updateTurnUI(){
+  const mine = (turn===0);
+  ['playBtn','passBtn','playBtn_m','passBtn_m'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.disabled = !mine;
+  });
+  if(mine && firstTrick){
+    const hasClub3 = players[0].some(c=>c.rank==='3'&&c.suit==='♣');
+    document.getElementById('info').innerText = hasClub3 ? '輪到你（首攻需含 ♣3）' : '輪到你，但此局非你首攻';
+  } else {
+    document.getElementById('info').innerText = mine ? '輪到你' : `等待 ${names[turn]} 出牌…`;
+  }
 }
 
 function selected(){ return [...document.querySelectorAll('#hand-bottom .selected')].map(e=>({suit:e.textContent[0],rank:e.textContent.slice(1)})); }
