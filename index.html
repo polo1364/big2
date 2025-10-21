@@ -63,26 +63,9 @@ h1{
   border-bottom:1px solid rgba(255,255,255,0.15);
 }
 /* 右上角開關 */
-#sfxToggle,#bgmToggle{
-  position:absolute;
-  right:16px;
-  z-index:6;
-  border:none;
-  border-radius:16px;
-  background:rgba(255,255,255,0.15);
-  backdrop-filter:blur(10px);
-  color:#fff;
-  padding:12px 16px;
-  min-height:48px;
-  cursor:pointer;
-  font-weight:800;
-  border:2px solid rgba(255,255,255,0.25);
-  transition:all 0.3s ease;
-  font-size:14px;
-  box-shadow:0 4px 12px rgba(0,0,0,0.15);
-}
-#sfxToggle{top:16px}
-#bgmToggle{top:76px}
+#sfxToggle,#bgmToggle{}
+#sfxToggle{}
+#bgmToggle{}
 #sfxToggle:hover,#bgmToggle:hover{
   background:rgba(255,255,255,0.25);
   transform:translateY(-2px);
@@ -576,7 +559,7 @@ button[disabled]{
       <div id="fx"></div>
       <div id="centerTools">
         <button id="resetScoreBtn" class="btn-ghost btn-small">重置分數(10000)</button>
-      </div>
+      <button id="sfxToggle" class="btn-ghost btn-small">音效：開</button><button id="bgmToggle" class="btn-ghost btn-small">音樂：關</button></div>
       <div id="info">載入中…</div>
       <div id="last"></div>
       <div id="pile"></div>
