@@ -3,11 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>大老二 — 系列戰 v16（修正：可點牌）</title>
+<title>大老二 — 系列戰 v19（點擊選牌｜禁用滑動選取）</title>
 <style>
 :root{
   --card-w:66px;--card-h:94px;--gap:8px;
   --pile-w:48px;--pile-h:66px;
+  --panel-w:min(92vw,980px);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;background:radial-gradient(#162333,#0b121a);color:#e6eef6;font-family:"Microsoft JhengHei",system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;user-select:none;overflow:hidden}
@@ -21,11 +22,16 @@ h1{margin:10px 0 6px;font-weight:800;letter-spacing:.5px;font-size:18px}
   border:1px solid rgba(255,255,255,.22)
 }
 .table{position:relative;flex:1;display:grid;grid-template-columns:1fr auto 1fr;grid-template-rows:1fr auto 1fr;height:100%;gap:6px}
-.player{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;/* 移除 pointer-events:none 以允許手牌可點 */}
+.player{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
 .name{font-weight:800;letter-spacing:.5px}
 .score{font-size:12px;opacity:.9;background:#0d2535;border:1px solid rgba(255,255,255,.16);padding:3px 8px;border-radius:999px}
 .player:not(#p-bottom) .hand{display:none}
-.hand{display:flex;gap:var(--gap);max-width:96vw;overflow-x:auto;padding:6px 4px;touch-action:pan-x;pointer-events:auto}
+.hand{
+  display:flex;gap:var(--gap);max-width:96vw;overflow-x:auto;padding:6px 4px;
+  /* 保留水平滑動以便看完整手牌，但不以滑動選牌 */
+  touch-action:pan-x;
+  pointer-events:auto
+}
 #hand-bottom.two-rows{flex-wrap:wrap;row-gap:10px;justify-content:center;overflow-x:hidden}
 #hand-bottom.two-rows .card{ width:var(--card-w-2);height:calc(var(--card-w-2)*1.42);min-width:var(--card-w-2); }
 .card{
@@ -33,14 +39,16 @@ h1{margin:10px 0 6px;font-weight:800;letter-spacing:.5px;font-size:18px}
   width:var(--card-w);height:var(--card-h);min-width:var(--card-w);
   background:#fff;border-radius:14px;border:2px solid #cfd8dc;color:#0e141a;
   display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;
-  transition:transform .18s, border-color .18s, box-shadow .18s
+  transition:transform .18s, border-color .18s, box-shadow .18s;
+  /* iOS Safari：避免 300ms 點擊延遲，並避免把點擊視為滾動手勢 */
+  touch-action:manipulation;
 }
-/* 擴大觸控命中區域（但避免過度重疊） */
-.card::after{content:"";position:absolute;inset:-10px;border-radius:18px;}
+/* 擴大觸控命中區域但不攔截事件 */
+.card::after{content:"";position:absolute;inset:-8px;border-radius:18px;pointer-events:none;}
 .card.♥,.card.♦{color:#d11}
 .selected{transform:translateY(-16px);border-color:#ffd866;box-shadow:0 10px 22px rgba(255,216,102,.35)}
 #centerPanel{
-  grid-column:2;grid-row:2;width:min(92vw,980px);
+  grid-column:2;grid-row:2;width:var(--panel-w);
   background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
   border:1px solid rgba(255,255,255,.14);
   border-radius:16px;padding:12px 16px;backdrop-filter:blur(6px);
@@ -146,6 +154,7 @@ button[disabled]{opacity:.5;cursor:not-allowed}
 
 <script>
 "use strict";
+/* ====== 基本資料 ====== */
 const SUITS=['♣','♦','♥','♠'],RANKS=['3','4','5','6','7','8','9','10','J','Q','K','A','2'];
 const suitOrder={'♣':0,'♦':1,'♥':2,'♠':3};
 const rIdx=r=>RANKS.indexOf(r);
@@ -157,6 +166,7 @@ const logBox = $('#logCenter');
 const info = t => $('#info').innerText=t;
 const setLast = t => $('#last').innerText=t||'';
 
+/* 紀錄 */
 function logAppendPlay(who,cards,kind){
   const line = document.createElement('div'); line.className='log-line';
   const ww = document.createElement('div'); ww.className='log-who'; ww.textContent=who;
@@ -173,18 +183,23 @@ function logAppendText(t){
   line.appendChild(ww); line.appendChild(kk); logBox.appendChild(line); logBox.scrollTop = logBox.scrollHeight;
 }
 
+/* 名字 */
 function randName(){const a="王李張陳林吳黃蔡楊許鄭何郭羅高胡蕭潘江鍾曾賴呂孫魏葉阮邱彭顏謝宋唐馮邵韓曹邢顧";
 const b="凱宇家豪志偉冠廷建宏志豪俊傑明哲冠霖俊宇承翰柏宇宗憲怡君欣怡雅婷雅雯佳蓉佩珊惠雯志玲美玲";
 return a[Math.floor(Math.random()*a.length)]+b[Math.floor(Math.random()*a.length)] + (Math.random()<.45?b[Math.floor(Math.random()*a.length)]:'');}
 
+/* 分數 */
 function saveScores(){ try{ localStorage.setItem('big2_scores', JSON.stringify(scores)); }catch(e){} }
-function loadScores(){ try{ const s = JSON.parse(localStorage.getItem('big2_scores')); if(Array.isArray(s) && s.length===4) scores = s; }catch(e){} updateScoreUI(); }
+function loadScores(){
+  try{ const s = JSON.parse(localStorage.getItem('big2_scores')); if(Array.isArray(s) && s.length===4) scores = s; }catch(e){}
+  updateScoreUI();
+}
 function updateScoreUI(){ ['bottom','right','top','left'].forEach((pos,i)=>{ $('#score-'+pos).innerText = (scores[i]||0)+' 分'; }); }
 
+/* 牌組與 UI */
 function buildDeck(){ deck=[]; for(const s of SUITS) for(const r of RANKS) deck.push({suit:s,rank:r}); }
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 function findStart(){ for(let i=0;i<4;i++) if(players[i].some(c=>c.rank==='3'&&c.suit==='♣')) return i; return 0; }
-
 function render(){
   const ids=['hand-bottom','hand-right','hand-top','hand-left'];
   ids.forEach((id,i)=>{
@@ -193,6 +208,19 @@ function render(){
       if(i===0){
         const d=document.createElement('div');
         d.className=`card ${c.suit}`; d.textContent=c.suit+c.rank; d.dataset.idx=idx;
+        // 嚴格「點擊/輕觸」才選牌（不使用拖曳改變選取）
+        d.addEventListener('click', (e)=>{ if(turn!==0) return; d.classList.toggle('selected'); }, {passive:true});
+        let sx=0,sy=0;
+        d.addEventListener('touchstart', (e)=>{ if(turn!==0) return; const t=e.changedTouches[0]; sx=t.clientX; sy=t.clientY; }, {passive:true});
+        d.addEventListener('touchend', (e)=>{
+          if(turn!==0) return;
+          const t=e.changedTouches[0];
+          // 僅當手指幾乎沒移動才視為點擊
+          if(Math.hypot(t.clientX-sx, t.clientY-sy) < 10){
+            e.preventDefault();
+            d.classList.toggle('selected');
+          }
+        }, {passive:false});
         area.appendChild(d);
       }
     });
@@ -200,27 +228,6 @@ function render(){
   ['bottom','right','top','left'].forEach((pos,i)=>$('#cnt-'+pos).innerText=players[i].length);
   adjustTwoRows();
 }
-
-/* 支援單點與拖曳多選 */
-function toggleCardSelByEl(el){ if(!el) return; el.classList.toggle('selected'); }
-document.getElementById('hand-bottom').addEventListener('click', e=>{
-  if(turn!==0) return;
-  const el=e.target.closest('.card'); if(el) toggleCardSelByEl(el);
-});
-let dragging=false;
-document.getElementById('hand-bottom').addEventListener('pointerdown', e=>{
-  if(turn!==0) return;
-  dragging=true; e.currentTarget.setPointerCapture(e.pointerId);
-  const el=e.target.closest('.card'); if(el) toggleCardSelByEl(el);
-},{passive:true});
-document.getElementById('hand-bottom').addEventListener('pointermove', e=>{
-  if(!dragging||turn!==0) return;
-  const el=document.elementFromPoint(e.clientX, e.clientY)?.closest('.card');
-  if(el && el.parentElement?.id==='hand-bottom') toggleCardSelByEl(el);
-});
-['pointerup','pointercancel','pointerleave'].forEach(ev=>{
-  document.getElementById('hand-bottom').addEventListener(ev, e=>{ dragging=false; });
-});
 
 function updateTurnUI(){
   const mine = (turn===0);
@@ -230,6 +237,7 @@ function updateTurnUI(){
   info(mine ? (firstTrick? '輪到你（首攻需含 ♣3；首攻不可 PASS）' : (currentPlay?'輪到你（可跟牌或 PASS）':'你拿到出牌權（不可 PASS）')) : `等待 ${names[turn]} 出牌…`);
 }
 
+/* 兩排手牌 */
 function isPortrait(){ return window.innerHeight > window.innerWidth; }
 function adjustTwoRows(){
   const hand = document.getElementById('hand-bottom');
@@ -249,6 +257,7 @@ function adjustTwoRows(){
 }
 window.addEventListener('resize', adjustTwoRows);
 
+/* 分析與比較（遵循你的規則） */
 function isConsec(s){ for(let i=1;i<s.length;i++) if(rIdx(s[i].rank)!==rIdx(s[i-1].rank)+1) return false; return true; }
 function analyze(cs){
   const n=cs.length, s=[...cs].sort(compareCard);
@@ -286,6 +295,7 @@ function canBeat(a,b){
   return false;
 }
 
+/* 列舉組合 */
 function combos(hand){
   const res=[],map={};
   hand.forEach(c=>(map[c.rank]=map[c.rank]||[]).push(c));
@@ -313,6 +323,7 @@ function combos(hand){
   return res;
 }
 
+/* AI */
 function pickLeaderCombo(all, enemyAlmostWin){
   const prefer = enemyAlmostWin ? ['同花順','鐵支','葫蘆','順子','三條','對子','單張']
                                 : ['順子','葫蘆','三條','對子','單張'];
@@ -356,6 +367,7 @@ function aiPlay(){
   }
 }
 
+/* 出牌與回合 */
 function toStr(cards){ return cards.map(c=>c.suit+c.rank).join(' '); }
 function renderPile(playerName,cards,kind){
   const pile=$('#pile'); pile.innerHTML='';
@@ -403,6 +415,7 @@ function onPass(){
   info('你 PASS'); logAppendText('你 PASS'); next();
 }
 
+/* 計分與結算 */
 function hasFourOfKind(hand){ const rc={}; hand.forEach(c=>rc[c.rank]=(rc[c.rank]||0)+1); return Object.values(rc).some(v=>v===4); }
 function hasStraightFlush(hand){
   const bySuit={'♣':[], '♦':[], '♥':[], '♠':[]};
@@ -488,7 +501,7 @@ document.getElementById('playBtn').onclick=onPlay;
 document.getElementById('passBtn').onclick=onPass;
 document.getElementById('dealBtn').onclick=deal;
 document.getElementById('hintBtn').onclick=openHints;
-document.getElementById('resetScoreBtn').onclick=()=>{ scores=[10000,10000,10000,10000]; localStorage.setItem('big2_scores', JSON.stringify(scores)); updateScoreUI(); logAppendText('🔄 分數已重置為 10000'); };
+document.getElementById('resetScoreBtn').onclick=()=>{ scores=[10000,10000,10000,10000]; saveScores(); updateScoreUI(); logAppendText('🔄 分數已重置為 10000'); };
 function deal(){
   names=['你',randName(),randName(),randName()];
   document.getElementById('name-right').innerText=names[1]; document.getElementById('name-top').innerText=names[2]; document.getElementById('name-left').innerText=names[3];
