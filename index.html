@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>大老二 — 桌遊休閒音樂完整版</title>
+<style>
+  body{margin:0;background:radial-gradient(#1b2530,#000);color:#fff;font-family:"Microsoft JhengHei",sans-serif;text-align:center;overflow:hidden}
+  h1{margin:8px 0}
+  .table{position:relative;width:100%;height:90vh;background:rgba(255,255,255,.05);border-radius:12px;overflow:hidden}
+  .player{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .name{font-size:14px;margin-bottom:4px;opacity:.9}
+  .hand{display:flex;gap:6px}
+  .card{width:48px;height:68px;background:#fff;border-radius:6px;color:#111;font-weight:700;font-size:18px;display:flex;align-items:center;justify-content:center;border:2px solid #ccc;cursor:pointer;transition:transform .15s,opacity .3s}
+  .card.♥,.card.♦{color:#d11}
+  .selected{transform:translateY(-10px);border-color:#f5c542;box-shadow:0 0 8px #f5c542}
+  .dim{opacity:.55}
+  #bottom{bottom:10px;left:50%;transform:translateX(-50%);flex-direction:column}
+  #top{top:10px;left:50%;transform:translateX(-50%)}
+  #left{top:50%;left:10px;transform:translateY(-50%) rotate(-90deg)}
+  #right{top:50%;right:10px;transform:translateY(-50%) rotate(90deg)}
+  #center{position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);background:rgba(255,255,255,.08);padding:10px 16px;border-radius:10px;min-width:280px;text-align:center}
+  button{margin:4px;padding:8px 14px;font-size:15px;border:none;border-radius:8px;background:#3498db;color:#fff;cursor:pointer}
+  button:hover{background:#2980b9}
+  .count{font-size:12px;background:#22303a;border-radius:6px;padding:2px 6px;margin-top:4px}
+  #log{position:absolute;right:10px;bottom:10px;width:260px;height:260px;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.1);border-radius:8px;overflow-y:auto;font-size:12px;text-align:left;padding:6px}
+  .log-entry{margin-bottom:4px}
+  .fade{animation:fly .6s ease-out forwards}
+  @keyframes fly{0%{transform:scale(1.08);opacity:0}100%{transform:scale(1);opacity:1}}
+  /* 提示面板 */
+  #hintPanel{position:absolute;bottom:90px;left:50%;transform:translateX(-50%);width:92%;max-width:860px;background:rgba(0,0,0,.72);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px;display:none}
+  #hintPanel h3{margin:4px 0 8px 0;font-size:14px;color:#ffdd55}
+  .combo-list{display:flex;flex-wrap:wrap;gap:6px;max-height:140px;overflow-y:auto}
+  .combo{padding:4px 6px;background:#20303a;border:1px solid #3a5767;border-radius:6px;font-size:14px;cursor:pointer}
+  .combo:hover{background:#315366}
+  .tags{font-size:11px;opacity:.8;margin-left:4px}
+  /* 音樂開關 */
+  #musicBtn{position:absolute;top:10px;right:10px;background:#3a5a70;z-index:5}
+</style>
+</head>
+<body>
+  <h1>大老二</h1>
+  <button id="musicBtn">🎵 音樂 ON</button>
+  <!-- 自動播放 + 循環的桌遊休閒風音樂（線上來源） -->
+  <audio id="bgm" loop autoplay>
+    <source src="https://actions.google.com/sounds/v1/ambiences/board_game_ambience.ogg" type="audio/ogg">
+  </audio>
+
+  <div class="table">
+    <div id="top" class="player"><div class="name" id="name-top"></div><div class="hand" id="hand-top"></div><div class="count" id="cnt-top"></div></div>
+    <div id="left" class="player"><div class="name" id="name-left"></div><div class="hand" id="hand-left"></div><div class="count" id="cnt-left"></div></div>
+    <div id="right" class="player"><div class="name" id="name-right"></div><div class="hand" id="hand-right"></div><div class="count" id="cnt-right"></div></div>
+    <div id="bottom" class="player"><div class="name" id="name-bottom">你</div><div class="hand" id="hand-bottom"></div><div class="count" id="cnt-bottom"></div></div>
+
+    <div id="center">
+      <div id="info" style="font-size:13px;opacity:.9;margin-bottom:4px;">載入中...</div>
+      <div id="last-play" style="font-size:13px;opacity:.7;margin-bottom:6px;"></div>
+      <button id="playBtn">出牌</button>
+      <button id="passBtn">PASS</button>
+      <button id="hintBtn">顯示提示</button>
+      <button id="dealBtn">重新發牌</button>
+    </div>
+
+    <div id="log" aria-label="戰況紀錄"></div>
+    <div id="hintPanel" aria-label="提示面板">
+      <h3>可出的組合（點擊自動選擇）</h3>
+      <div class="combo-list" id="comboList"></div>
+    </div>
+  </div>
+
+<script>
+/* ====== 背景音樂：自動播放 + ON/OFF 按鈕 ====== */
+const bgm = document.getElementById('bgm');
+const musicBtn = document.getElementById('musicBtn');
+let musicOn = true;
+function updateMusicBtn(){ musicBtn.textContent = musicOn ? '🎵 音樂 ON' : '🎵 音樂 OFF'; }
+musicBtn.addEventListener('click', ()=>{ musicOn = !musicOn; bgm.muted = !musicOn; updateMusicBtn(); });
+// 某些瀏覽器需要第一次互動才允許播放
+document.addEventListener('pointerdown', ()=>{ if(bgm.paused && musicOn){ bgm.play().catch(()=>{}); } }, { once:true });
+updateMusicBtn();
+
+/* ====== 基本資料與排序 ====== */
+const SUITS=['♣','♦','♥','♠'], RANKS=['3','4','5','6','7','8','9','10','J','Q','K','A','2'];
+const suitOrder={'♣':0,'♦':1,'♥':2,'♠':3};
+const rIdx=r=>RANKS.indexOf(r);
+const compareCard=(a,b)=>(rIdx(a.rank)-rIdx(b.rank))||(suitOrder[a.suit]-suitOrder[b.suit]);
+let deck=[], players=[[],[],[],[]], turn=0, currentPlay=null, lastWinner=-1, firstTrick=true, names=[];
+
+/* ====== UI 輔助 ====== */
+const logBox=document.getElementById('log');
+function info(t){ document.getElementById('info').innerText=t; }
+function setLast(t){ document.getElementById('last-play').innerText=t||''; }
+function logPush(t){ const d=document.createElement('div'); d.className='log-entry fade'; d.innerText=t; logBox.prepend(d); }
+
+/* ====== 名字生成 ====== */
+function randName(){
+  const a="王李張陳林吳黃蔡楊許鄭何郭羅高胡蕭潘江鍾曾賴呂孫魏葉阮邱彭顏謝宋唐馮邵韓曹邢顧";
+  const b="凱宇家豪志偉冠廷建宏志豪俊傑明哲冠霖俊宇承翰柏宇宗憲怡君欣怡雅婷雅雯佳蓉佩珊惠雯志玲美玲";
+  function pick(src,len){let s="";for(let i=0;i<len;i++)s+=src[Math.floor(Math.random()*src.length)];return s;}
+  return pick(a,1)+pick(b,Math.random()<0.5?1:2);
+}
+
+/* ====== 音效 ====== */
+function playSound(type){
+  const url={
+    play:"https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg",
+    pass:"https://actions.google.com/sounds/v1/cartoon/wood_plank_clank.ogg",
+    start:"https://actions.google.com/sounds/v1/cartoon/slide_whistle_up.ogg",
+    win:"https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"
+  }[type];
+  if(!url) return;
+  const a=new Audio(url); a.volume=0.35; a.play().catch(()=>{});
+}
+
+/* ====== 發牌與初始化 ====== */
+function buildDeck(){ deck=[]; for(const s of SUITS){ for(const r of RANKS){ deck.push({suit:s,rank:r}); } } }
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function deal(){
+  names=['你',randName(),randName(),randName()];
+  document.getElementById('name-right').innerText=names[1];
+  document.getElementById('name-top').innerText=names[2];
+  document.getElementById('name-left').innerText=names[3];
+  logBox.innerHTML=''; setLast('');
+  buildDeck(); shuffle(deck);
+  players=[[],[],[],[]];
+  for(let i=0;i<52;i++) players[i%4].push(deck[i]);
+  players.forEach(p=>p.sort(compareCard));
+  currentPlay=null; lastWinner=-1; firstTrick=true;
+  turn=findStart();
+  render();
+  info(`持有 ♣3 的玩家（${names[turn]}）先攻，且首攻必須包含 ♣3`);
+  playSound('start');
+  if(turn!==0) setTimeout(aiPlay,700);
+}
+function findStart(){ for(let i=0;i<4;i++){ if(players[i].some(c=>c.rank==='3'&&c.suit==='♣')) return i; } return 0; }
+function render(){
+  const ids=['hand-bottom','hand-right','hand-top','hand-left'];
+  ids.forEach((id,i)=>{
+    const area=document.getElementById(id); area.innerHTML='';
+    players[i].forEach(c=>{
+      const d=document.createElement('div');
+      d.className=`card ${c.suit}`; d.textContent=c.suit+c.rank;
+      if(i===0) d.onclick=()=>d.classList.toggle('selected');
+      else d.classList.add('dim');
+      area.appendChild(d);
+    });
+  });
+  document.getElementById('cnt-bottom').innerText=players[0].length;
+  document.getElementById('cnt-right').innerText=players[1].length;
+  document.getElementById('cnt-top').innerText=players[2].length;
+  document.getElementById('cnt-left').innerText=players[3].length;
+}
+
+/* ====== 牌型分析（順子固定五張） ====== */
+function isConsec(sorted){ for(let i=1;i<sorted.length;i++){ if(rIdx(sorted[i].rank)!==rIdx(sorted[i-1].rank)+1) return false; } return true; }
+function analyze(cs){
+  const n=cs.length, s=[...cs].sort(compareCard);
+  if(n===1) return {ok:true,kind:'single',high:s[0]};
+  if(n===2 && s[0].rank===s[1].rank) return {ok:true,kind:'pair',high:s[1]};
+  if(n===3 && s.every(c=>c.rank===s[0].rank)) return {ok:true,kind:'triple',high:s[2]};
+  if(n===4 && s.every(c=>c.rank===s[0].rank)) return {ok:true,kind:'four',high:s[3]};
+  if(n===5){
+    const rc={}; s.forEach(c=>rc[c.rank]=(rc[c.rank]||0)+1);
+    const vals=Object.values(rc).sort((a,b)=>b-a);
+    const sameSuit=s.every(c=>c.suit===s[0].suit);
+    const consec=isConsec(s);
+    if(sameSuit && consec) return {ok:true,kind:'sf',high:s[4]};        // 同花順
+    if(vals[0]===3 && vals[1]===2){                                     // 葫蘆
+      const trip=Object.keys(rc).find(r=>rc[r]===3);
+      const high=s.filter(c=>c.rank===trip).slice(-1)[0];
+      return {ok:true,kind:'fullhouse',high};
+    }
+    if(consec) return {ok:true,kind:'straight',high:s[4]};              // 順子（5張）
+  }
+  return {ok:false};
+}
+const strVal={'single':1,'pair':1,'triple':1,'straight':2,'fullhouse':3,'four':4,'sf':5};
+function canBeat(a,b){
+  if(!b) return true;
+  const A=analyze(a), B=analyze(b);
+  if(!A.ok) return false;
+  if(A.kind===B.kind){
+    const r=rIdx(A.high.rank)-rIdx(B.high.rank);
+    if(r!==0) return r>0;
+    return suitOrder[A.high.suit]>suitOrder[B.high.suit];
+  }
+  // 釘牌：四 可壓 fullhouse/straight/pair；同花順 可壓 四/fullhouse/straight/pair
+  if(A.kind==='four' && (B.kind==='fullhouse'||B.kind==='straight'||B.kind==='pair')) return true;
+  if(A.kind==='sf'   && (B.kind==='four'||B.kind==='fullhouse'||B.kind==='straight'||B.kind==='pair')) return true;
+  return false;
+}
+
+/* ====== 生成所有可出的組合 ====== */
+function combos(hand){
+  const res=[],map={};
+  hand.forEach(c=>(map[c.rank]=map[c.rank]||[]).push(c));
+  // 單張
+  hand.forEach(c=>res.push([c]));
+  // 對子
+  for(const r in map) if(map[r].length>=2){
+    const a=map[r].slice().sort(compareCard);
+    for(let i=0;i<a.length;i++) for(let j=i+1;j<a.length;j++) res.push([a[i],a[j]]);
+  }
+  // 三條
+  for(const r in map) if(map[r].length>=3){
+    const a=map[r].slice().sort(compareCard);
+    for(let i=0;i<a.length;i++) for(let j=i+1;j<a.length;j++) for(let k=j+1;k<a.length;k++) res.push([a[i],a[j],a[k]]);
+  }
+  // 四條
+  for(const r in map) if(map[r].length===4) res.push(map[r].slice());
+  // 五張（順子/葫蘆/同花順）
+  const n=hand.length;
+  for(let a=0;a<n;a++) for(let b=a+1;b<n;b++) for(let c=b+1;c<n;c++) for(let d=c+1;d<n;d++) for(let e=d+1;e<n;e++){
+    const pack=[hand[a],hand[b],hand[c],hand[d],hand[e]];
+    const an=analyze(pack);
+    if(an.ok && (an.kind==='straight'||an.kind==='fullhouse'||an.kind==='sf')) res.push(pack);
+  }
+  // 排序：先弱後強，同型比高牌
+  res.sort((x,y)=>{
+    const A=analyze(x), B=analyze(y);
+    if(strVal[A.kind]!==strVal[B.kind]) return strVal[A.kind]-strVal[B.kind];
+    const r=rIdx(A.high.rank)-rIdx(B.high.rank);
+    return r!==0 ? r : (suitOrder[A.high.suit]-suitOrder[B.high.suit]);
+  });
+  return res;
+}
+
+/* ====== AI（Lv3.5 戰略） ====== */
+function aiPlay(){
+  const i=turn, hand=players[i];
+  // 只剩一張：直接出那張
+  if(hand.length===1){ play(i,[hand[0]]); return; }
+
+  const all=combos(hand);
+  const enemyAlmostWin = players.some((p,idx)=>idx!==i && p.length<=2);
+  let options=[];
+  if(!currentPlay){
+    if(firstTrick) options=all.filter(c=>c.some(x=>x.rank==='3'&&x.suit==='♣'));
+    else options = enemyAlmostWin ? all.filter(c=>analyze(c).kind!=='single') : all;
+  }else{
+    options = all.filter(c=>canBeat(c,currentPlay));
+  }
+  // 保留炸彈/同花順，除非對手快贏或手牌少
+  const filtered = options.filter(c=>{
+    const k=analyze(c).kind;
+    if((k==='four'||k==='sf') && !enemyAlmostWin && hand.length>6) return false;
+    return true;
+  });
+  // 若對手快贏，盡量用炸彈壓制
+  if(enemyAlmostWin){
+    const bomb = options.find(c=>['four','sf'].includes(analyze(c).kind));
+    if(bomb){ play(i,bomb); return; }
+  }
+  const choice = (filtered.length? filtered : options)[0];
+  if(choice) play(i,choice);
+  else { info(`${names[i]} PASS`); logPush(`${names[i]} PASS`); playSound('pass'); next(); }
+}
+
+/* ====== 出牌、換人 ====== */
+function toStr(cards){ return cards.map(c=>c.suit+c.rank).join(' '); }
+function play(i,cards){
+  // 扣牌
+  cards.forEach(c=>{
+    const idx=players[i].findIndex(p=>p.rank===c.rank && p.suit===c.suit);
+    if(idx>-1) players[i].splice(idx,1);
+  });
+  render();
+  const an=analyze(cards);
+  currentPlay=cards; lastWinner=i; firstTrick=false;
+  const txt=`${names[i]}：${toStr(cards)}（${an.kind}）`;
+  setLast(txt); logPush(txt); playSound('play');
+  if(players[i].length===0){ info(`${names[i]} 脫手勝利！`); logPush(`${names[i]} 獲勝！`); playSound('win'); turn=-1; return; }
+  next();
+}
+function next(){
+  if(turn<0) return;
+  turn=(turn+1)%4;
+  if(turn===lastWinner){ currentPlay=null; info(`${names[turn]} 重新出牌`); }
+  else if(turn===0) info('輪到你');
+  if(turn!==0) setTimeout(aiPlay,800);
+}
+
+/* ====== 玩家事件 ====== */
+function selected(){
+  return [...document.querySelectorAll('#hand-bottom .selected')].map(e=>({suit:e.textContent[0], rank:e.textContent.slice(1)}));
+}
+document.getElementById('playBtn').onclick=()=>{
+  if(turn!==0) return;
+  const cs=selected();
+  if(!cs.length){ info('請先選牌'); return; }
+  const an=analyze(cs);
+  if(!an.ok){ info('不合法組合'); return; }
+  if(firstTrick && !cs.some(c=>c.rank==='3'&&c.suit==='♣')){ info('首攻必須包含 ♣3'); return; }
+  if(currentPlay && !canBeat(cs,currentPlay)){ info('比不過前家'); return; }
+  play(0,cs);
+};
+document.getElementById('passBtn').onclick=()=>{
+  if(turn!==0) return;
+  info('你 PASS'); logPush('你 PASS'); playSound('pass'); next();
+};
+document.getElementById('dealBtn').onclick=deal;
+
+/* ====== 提示面板 ====== */
+document.getElementById('hintBtn').onclick=()=>{
+  const panel=document.getElementById('hintPanel');
+  if(panel.style.display==='none' || !panel.style.display) showHints(); else panel.style.display='none';
+};
+function showHints(){
+  const list=document.getElementById('comboList'); list.innerHTML='';
+  const hand=players[0];
+  let listComb=combos(hand);
+  if(firstTrick) listComb = listComb.filter(c=>c.some(x=>x.rank==='3'&&x.suit==='♣'));
+  if(currentPlay) listComb = listComb.filter(c=>canBeat(c,currentPlay));
+  const panel=document.getElementById('hintPanel'); panel.style.display='block';
+  if(listComb.length===0){ const none=document.createElement('div'); none.innerText='（目前沒有可出的牌）'; list.appendChild(none); return; }
+  listComb.slice(0,150).forEach(c=>{
+    const an=analyze(c);
+    const div=document.createElement('div'); div.className='combo'; div.innerText=toStr(c);
+    const tag=document.createElement('span'); tag.className='tags'; tag.innerText=an.kind;
+    div.appendChild(tag);
+    div.onclick=()=>{ // 自動亮選
+      document.querySelectorAll('#hand-bottom .card').forEach(el=>el.classList.remove('selected'));
+      const need={}; c.forEach(x=>need[x.suit+x.rank]=(need[x.suit+x.rank]||0)+1);
+      document.querySelectorAll('#hand-bottom .card').forEach(el=>{
+        const key=el.textContent; if(need[key]>0){ el.classList.add('selected'); need[key]--; }
+      });
+    };
+    list.appendChild(div);
+  });
+}
+
+/* ====== 啟動 ====== */
+deal();
+</script>
+</body>
+</html>
