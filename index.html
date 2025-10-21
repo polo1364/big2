@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>大老二 — 介面重設＋計分模式（系列戰 v7）</title>
+<title>大老二 — 介面重設＋計分模式（系列戰 v8）</title>
 <style>
 :root{
   --card-w:56px;--card-h:80px;--gap:6px;--panel-w:min(92vw,980px);
@@ -14,7 +14,6 @@ body{margin:0;background:radial-gradient(#162333,#0b121a);color:#e6eef6;font-fam
 h1{margin:10px 0 6px;font-weight:800;letter-spacing:.5px;font-size:18px}
 #stage{position:relative;width:100%;height:100dvh;display:grid;grid-template-rows:auto 1fr auto}
 .topbar{display:flex;justify-content:center;align-items:center;padding:6px 10px}
-/* 浮動重置按鈕（牌桌左上角） */
 #resetScoreBtn{
   position:absolute;left:8px;top:8px;z-index:6;
   border:none;border-radius:10px;background:transparent;color:#e6eef6;
@@ -26,10 +25,8 @@ h1{margin:10px 0 6px;font-weight:800;letter-spacing:.5px;font-size:18px}
 .player{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
 .name{font-weight:800;letter-spacing:.5px}
 .score{font-size:12px;opacity:.9;background:#0d2535;border:1px solid rgba(255,255,255,.16);padding:2px 6px;border-radius:999px}
-/* 只顯示自己的手牌，其他家不顯示牌面 */
 .player:not(#p-bottom) .hand{display:none}
 .hand{display:flex;gap:var(--gap);max-width:96vw;overflow-x:auto;padding:2px;touch-action:pan-x}
-/* 兩排模式（直式且超出寬度時啟用） */
 #hand-bottom.two-rows{flex-wrap:wrap;row-gap:6px;justify-content:center;overflow-x:hidden}
 #hand-bottom.two-rows .card{
   width:var(--card-w-2);height:calc(var(--card-w-2)*1.42);min-width:var(--card-w-2);
@@ -53,12 +50,10 @@ h1{margin:10px 0 6px;font-weight:800;letter-spacing:.5px;font-size:18px}
 }
 #info{font-size:14px;opacity:.9}
 #last{font-size:13px;opacity:.75;min-height:18px}
-/* 丟牌區 */
 #pile{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 .pile-card{width:var(--pile-w);height:var(--pile-h);background:#fff;border-radius:10px;border:2px solid #cfd8dc;display:flex;align-items:center;justify-content:center;
   font-weight:800;font-size:14px}
 .pile-card.♥,.pile-card.♦{color:#d11}
-/* 戰況：由上往下（新紀錄追加在底部）＋ 牌面化 */
 #logCenter{
   width:100%;max-width:920px;height:140px;overflow-y:auto;border:1px dashed rgba(255,255,255,.18);border-radius:12px;
   padding:8px;background:rgba(0,0,0,.18);font-size:12px;display:flex;flex-direction:column;
@@ -69,13 +64,11 @@ h1{margin:10px 0 6px;font-weight:800;letter-spacing:.5px;font-size:18px}
 .log-cards{display:flex;gap:4px;flex-wrap:wrap}
 .log-card{width:28px;height:38px;background:#fff;border:2px solid #cfd8dc;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:800;color:#0e141a}
 .log-card.♥,.log-card.♦{color:#d11}
-/* 操作列：把 提示 / 重發 放到 PASS 旁邊 */
 .actionRow{grid-column:2;display:flex;gap:10px;justify-content:center;margin-top:4px;flex-wrap:wrap}
 #p-top{grid-column:2;grid-row:1}
 #p-left{grid-column:1;grid-row:2}
 #p-right{grid-column:3;grid-row:2}
 #p-bottom{grid-column:2;grid-row:3}
-/* 系列戰結算面板 */
 #seriesOverlay{
   position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);
   display:none;align-items:center;justify-content:center;z-index:20
@@ -89,7 +82,6 @@ h1{margin:10px 0 6px;font-weight:800;letter-spacing:.5px;font-size:18px}
 .rank-item{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.12);margin-bottom:8px}
 .rank-item .who{font-weight:800}
 .rank-item .pts{opacity:.95}
-/* 單局結算面板 */
 #roundOverlay{
   position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);
   display:none;align-items:center;justify-content:center;z-index:18
@@ -106,7 +98,6 @@ h1{margin:10px 0 6px;font-weight:800;letter-spacing:.5px;font-size:18px}
 .pExplain{opacity:.85;font-size:12px}
 .pRight{display:flex;gap:12px;align-items:center}
 .pScore{font-weight:800}
-/* 提示面板修正：置中顯示＋良好樣式 */
 #hintOverlay{
   position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;
   align-items:center;justify-content:center;z-index:30;padding:10px
@@ -122,7 +113,6 @@ h1{margin:10px 0 6px;font-weight:800;letter-spacing:.5px;font-size:18px}
 .combo-wrap{display:flex;flex-wrap:wrap;gap:6px}
 .combo{padding:6px 8px;background:#20303a;border:1px solid #3a5767;border-radius:8px;font-size:14px;cursor:pointer}
 .combo .tags{font-size:11px;opacity:.75;margin-left:6px}
-/* 手機直式調整：縮小戰況、縮小中央面板寬度，避免遮到左右家張數 */
 @media (max-width: 820px){
   :root{--card-w:46px;--card-h:66px;--gap:4px;--pile-w:36px;--pile-h:50px}
   #centerPanel{width:82vw}
@@ -164,7 +154,6 @@ h1{margin:10px 0 6px;font-weight:800;letter-spacing:.5px;font-size:18px}
   </div>
 </div>
 
-<!-- 單局結算 -->
 <div id="roundOverlay" role="dialog" aria-modal="true">
   <div id="roundCard">
     <h2>本局結算</h2>
@@ -177,7 +166,6 @@ h1{margin:10px 0 6px;font-weight:800;letter-spacing:.5px;font-size:18px}
   </div>
 </div>
 
-<!-- 系列戰結算 -->
 <div id="seriesOverlay" role="dialog" aria-modal="true">
   <div id="seriesCard">
     <h2>系列戰結算</h2>
@@ -189,7 +177,6 @@ h1{margin:10px 0 6px;font-weight:800;letter-spacing:.5px;font-size:18px}
   </div>
 </div>
 
-<!-- 提示面板 -->
 <div id="hintOverlay">
   <div id="hintPanel">
     <h3>可出組合</h3>
@@ -199,7 +186,6 @@ h1{margin:10px 0 6px;font-weight:800;letter-spacing:.5px;font-size:18px}
 </div>
 
 <script>
-/* ====== 資料結構 ====== */
 const SUITS=['♣','♦','♥','♠'],RANKS=['3','4','5','6','7','8','9','10','J','Q','K','A','2'];
 const suitOrder={'♣':0,'♦':1,'♥':2,'♠':3};
 const rIdx=r=>RANKS.indexOf(r);
@@ -244,7 +230,6 @@ function updateScoreUI(){
   ['bottom','right','top','left'].forEach((pos,i)=>{ $('#score-'+pos).innerText = (scores[i]||0)+' 分'; });
 }
 
-/* ====== 牌組處理 ====== */
 function buildDeck(){ deck=[]; for(const s of SUITS) for(const r of RANKS) deck.push({suit:s,rank:r}); }
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 function findStart(){ for(let i=0;i<4;i++) if(players[i].some(c=>c.rank==='3'&&c.suit==='♣')) return i; return 0; }
@@ -258,7 +243,7 @@ function render(){
         const d=document.createElement('div');
         d.className=`card ${c.suit}`; d.textContent=c.suit+c.rank; d.dataset.idx=idx;
         area.appendChild(d);
-      } else { /* 其他家不渲染牌面 */ }
+      }
     });
   });
   ['bottom','right','top','left'].forEach((pos,i)=>$('#cnt-'+pos).innerText=players[i].length);
@@ -273,13 +258,11 @@ $('#hand-bottom').addEventListener('pointerdown', e=>{
 function updateTurnUI(){
   const mine = (turn===0);
   const canPass = mine && !!currentPlay;
-  const playEl=document.getElementById('playBtn'), passEl=document.getElementById('passBtn');
-  if(playEl) playEl.disabled = !mine;
-  if(passEl) passEl.disabled = !canPass;
+  $('#playBtn').disabled = !mine;
+  $('#passBtn').disabled = !canPass;
   info(mine ? (firstTrick? '輪到你（首攻需含 ♣3；首攻不可 PASS）' : (currentPlay?'輪到你（可跟牌或 PASS）':'你拿到出牌權（不可 PASS）')) : `等待 ${names[turn]} 出牌…`);
 }
 
-/* ====== 兩排手牌（直式且溢出時） ====== */
 function isPortrait(){ return window.innerHeight > window.innerWidth; }
 function adjustTwoRows(){
   const hand = document.getElementById('hand-bottom');
@@ -288,9 +271,8 @@ function adjustTwoRows(){
   const n = players[0].length;
   if(n<=7) return;
   const avail = Math.floor(window.innerWidth * 0.94);
-  const rootStyles = getComputedStyle(document.documentElement);
-  const gap = parseInt(rootStyles.getPropertyValue('--gap')) || 6;
-  const cardW = parseInt(rootStyles.getPropertyValue('--card-w')) || 56;
+  const gap = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--gap')) || 6;
+  const cardW = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--card-w')) || 56;
   const oneRowWidth = n*cardW + (n-1)*gap;
   if(oneRowWidth <= avail) return;
   const cols = Math.ceil(n/2);
@@ -300,23 +282,7 @@ function adjustTwoRows(){
 }
 window.addEventListener('resize', adjustTwoRows);
 
-/* ====== 遊戲流程 ====== */
-function deal(){
-  names=['你',randName(),randName(),randName()];
-  $('#name-right').innerText=names[1];
-  $('#name-top').innerText=names[2];
-  $('#name-left').innerText=names[3];
-  $('#pile').innerHTML=''; logBox.innerHTML=''; setLast('');
-  buildDeck(); shuffle(deck);
-  players=[[],[],[],[]];
-  for(let i=0;i<52;i++) players[i%4].push(deck[i]);
-  players.forEach(p=>p.sort(compareCard));
-  currentPlay=null; lastWinner=-1; firstTrick=true; turn=findStart();
-  render(); updateTurnUI();
-  info(`持有 ♣3 的玩家（${names[turn]}）先攻`);
-  if(turn!==0) setTimeout(aiPlay,700);
-}
-
+/* ====== 手型分析 ====== */
 function isConsec(s){ for(let i=1;i<s.length;i++) if(rIdx(s[i].rank)!==rIdx(s[i-1].rank)+1) return false; return true; }
 function analyze(cs){
   const n=cs.length, s=[...cs].sort(compareCard);
@@ -339,21 +305,9 @@ function analyze(cs){
   }
   return {ok:false};
 }
-const strVal={'單張':1,'對子':1,'三條':1,'順子':2,'葫蘆':3,'鐵支':4,'同花順':5};
-function canBeat(a,b){
-  if(!b) return true;
-  const A=analyze(a), B=analyze(b);
-  if(!A.ok) return false;
-  if(A.kind===B.kind){
-    const r=rIdx(A.high.rank)-rIdx(B.high.rank);
-    if(r!==0) return r>0;
-    return suitOrder[A.high.suit]>suitOrder[B.high.suit];
-  }
-  if(A.kind==='鐵支' && (B.kind==='葫蘆'||B.kind==='順子'||B.kind==='對子')) return true;
-  if(A.kind==='同花順' && (B.kind==='鐵支'||B.kind==='葫蘆'||B.kind==='順子'||B.kind==='對子')) return true;
-  return false;
-}
+const strength={'單張':1,'對子':2,'三條':3,'順子':4,'葫蘆':5,'鐵支':6,'同花順':7};
 
+/* ====== 所有可用組合 ====== */
 function combos(hand){
   const res=[],map={};
   hand.forEach(c=>(map[c.rank]=map[c.rank]||[]).push(c));
@@ -374,32 +328,61 @@ function combos(hand){
   }
   res.sort((x,y)=>{
     const A=analyze(x),B=analyze(y);
-    if(strVal[A.kind]!==strVal[B.kind]) return strVal[A.kind]-strVal[B.kind];
+    if(strength[A.kind]!==strength[B.kind]) return strength[A.kind]-strength[B.kind];
     const r=rIdx(A.high.rank)-rIdx(B.high.rank);
     return r!==0?r:(suitOrder[A.high.suit]-suitOrder[B.high.suit]);
   });
   return res;
 }
 
-/* ====== AI（略兇） ====== */
+/* ====== AI 改良：會主動出對子/三條/五張手 ====== */
+function pickLeaderCombo(hand, all, enemyAlmostWin){
+  // 首攻時（或輪到重新出牌）選擇策略
+  const prefer = enemyAlmostWin
+    ? ['同花順','鐵支','葫蘆','順子','三條','對子','單張']
+    : ['順子','葫蘆','三條','對子','單張']; // 避免一開始亂炸
+  for(const k of prefer){
+    const cands = all.filter(c=>analyze(c).kind===k);
+    if(cands.length){
+      // 用「最低能量」的那個，保留更強的以後用
+      return cands[0];
+    }
+  }
+  return all[0]||null;
+}
+function pickResponseCombo(options, currentPlay){
+  const needKind = analyze(currentPlay).kind;
+  const same = options.filter(c=>analyze(c).kind===needKind);
+  if(same.length) return same[0]; // 最便宜過牌
+  const bombs = options.filter(c=>['鐵支','同花順'].includes(analyze(c).kind));
+  if(bombs.length) return bombs[0];
+  // 其他（理論上不會到這）
+  return options[0]||null;
+}
+
 function aiPlay(){
   const i=turn, hand=players[i];
   const isLeader = !currentPlay || turn===lastWinner;
   const all=combos(hand);
   const enemyAlmostWin = players.some((p,idx)=>idx!==i && p.length<=2);
   let options=[];
-  if(!currentPlay) options = firstTrick? all.filter(c=>c.some(x=>x.rank==='3'&&x.suit==='♣')) : (enemyAlmostWin? all.filter(c=>analyze(c).kind!=='單張') : all);
-  else options = all.filter(c=>canBeat(c,currentPlay));
-  const filtered=options.filter(c=>{
-    const k=analyze(c).kind;
-    if((k==='鐵支'||k==='同花順') && !enemyAlmostWin && hand.length>6) return false;
-    return true;
-  });
-  const choice=(filtered.length?filtered:options)[0];
-  if(choice) play(i,choice); else {
+  if(!currentPlay){
+    options = firstTrick ? all.filter(c=>c.some(x=>x.rank==='3'&&x.suit==='♣')) : all;
+    const choice = pickLeaderCombo(hand, options, enemyAlmostWin);
+    if(choice) play(i,choice); else { info(`${names[i]} PASS`); logAppendText(`${names[i]} PASS`); next(); }
+    return;
+  }else{
+    options = all.filter(c=>canBeat(c,currentPlay));
+    if(options.length){
+      const choice = pickResponseCombo(options, currentPlay);
+      play(i,choice); return;
+    }
+    // 無法跟
     if(isLeader){
-      const smallest=hand.slice().sort(compareCard)[0]; play(i,[smallest]);
-    } else {
+      // 不太可能出現，但保底：首攻出最弱非單張，否則單張
+      const nonSingles = all.filter(c=>analyze(c).kind!=='單張');
+      play(i, (nonSingles[0]||all[0]) );
+    }else{
       info(`${names[i]} PASS`); logAppendText(`${names[i]} PASS`); next();
     }
   }
@@ -450,7 +433,7 @@ function onPass(){
   info('你 PASS'); logAppendText('你 PASS'); next();
 }
 
-/* ====== 計分、單局結算、系列戰結算 ====== */
+/* ====== 計分、單局結算、系列戰結算（含贏家吃分） ====== */
 function hasFourOfKind(hand){
   const rc={}; hand.forEach(c=>rc[c.rank]=(rc[c.rank]||0)+1);
   return Object.values(rc).some(v=>v===4);
@@ -470,7 +453,7 @@ function hasStraightFlush(hand){
 let pendingNextAction = null; // 'deal' or 'series'
 function endRound(winnerIdx){
   const detail=[];
-  const perPlayer = []; // {i, name, delta, explain, score}
+  const perPlayer = [];
   let totalGain = 0;
   for(let i=0;i<4;i++){
     if(i===winnerIdx) continue;
@@ -531,7 +514,6 @@ document.getElementById('roundContinueBtn').onclick=()=>{
 };
 document.getElementById('roundCloseBtn').onclick=hideRoundOverlay;
 
-/* 系列戰結算 */
 function showSeriesOverlay(){
   const ov = document.getElementById('seriesOverlay');
   const list = document.getElementById('rankList');
@@ -604,7 +586,6 @@ document.getElementById('dealBtn').onclick=deal;
 document.getElementById('hintBtn').onclick=openHints;
 document.getElementById('resetScoreBtn').onclick=()=>{ scores=[10000,10000,10000,10000]; saveScores(); updateScoreUI(); logAppendText('🔄 分數已重置為 10000'); };
 
-/* ====== 開始 ====== */
 loadScores();
 deal();
 </script>
