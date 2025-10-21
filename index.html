@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>大老二 — 系列戰 v22（點擊選牌＋全特效＋完整結算）</title>
+<title>大老二 — 系列戰 v23（鐵支=4+1 規則修正）</title>
 <style>
 :root{
   --card-w:66px;--card-h:94px;--gap:8px;
@@ -46,8 +46,7 @@ h1{margin:10px 0 6px;font-weight:800;letter-spacing:.5px;font-size:18px}
   border:1px solid rgba(255,255,255,.14);
   border-radius:16px;padding:12px 16px;backdrop-filter:blur(6px);
   display:flex;flex-direction:column;align-items:center;gap:8px;
-  position:relative; /* FX 容器定位 */
-  overflow:visible;
+  position:relative;overflow:visible;
 }
 #fx{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:5}
 #info{font-size:15px;opacity:.95}
@@ -80,7 +79,7 @@ button[disabled]{opacity:.5;cursor:not-allowed}
 #p-right{grid-column:3;grid-row:2}
 #p-bottom{grid-column:2;grid-row:3;justify-content:flex-start}
 
-/* 提示面板（卡片式） */
+/* 提示面板 */
 .overlay{ position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:40;padding:10px }
 .panel{
   width:min(92vw,860px);max-height:80vh;overflow:auto;
@@ -102,7 +101,7 @@ button[disabled]{opacity:.5;cursor:not-allowed}
 .mini.♥,.mini.♦{color:#d11}
 .tag{margin-left:auto;font-size:12px;opacity:.75}
 
-/* 結算（單局/系列戰） */
+/* 結算 */
 .panel h2{margin:0 0 10px;font-size:20px}
 .pList{list-style:none;margin:0;padding:0}
 .pItem{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:10px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.12);margin-bottom:8px}
@@ -115,7 +114,7 @@ button[disabled]{opacity:.5;cursor:not-allowed}
 .rank{list-style:none;margin:8px 0 0;padding:0}
 .rank li{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.12);margin-bottom:8px}
 
-/* ===== 牌桌特效 ===== */
+/* FX */
 @keyframes fx-pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.1);opacity:1}100%{transform:scale(1);opacity:1}}
 .fx-symbol{
   position:absolute;left:50%;top:22%;transform:translate(-50%,-50%);font-weight:900;
@@ -134,7 +133,6 @@ button[disabled]{opacity:.5;cursor:not-allowed}
 .fx-confetti{position:absolute;width:10px;height:14px;border-radius:2px;animation:fx-confetti .8s linear forwards;opacity:.95;z-index:5}
 @keyframes fx-shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-8px)}40%,60%{transform:translateX(8px)}}
 .shake{animation:fx-shake .5s ease-in-out 1}
-/* 閃電＋閃光（鐵支） */
 @keyframes fx-flash{0%{opacity:.9}100%{opacity:0}}
 .fx-flash{position:absolute;inset:0;background:rgba(255,255,255,.9);animation:fx-flash .18s ease-out forwards;z-index:7}
 .fx-bolt{
@@ -144,7 +142,6 @@ button[disabled]{opacity:.5;cursor:not-allowed}
   transform-origin:top; z-index:6; opacity:.95;
   animation:fx-pop .2s ease-out both;
 }
-/* 葫蘆滾動條 */
 @keyframes fx-roll{0%{transform:translateX(-60%) rotate(0)}100%{transform:translateX(160%) rotate(720deg)}}
 .fx-roll{
   position:absolute;left:0;right:0;top:10%;margin:auto;width:max-content;
@@ -318,22 +315,28 @@ function adjustTwoRows(){
 }
 window.addEventListener('resize', adjustTwoRows);
 
-/* 分析與比較 */
+/* 分析與比較（鐵支=4+1） */
 function isConsec(s){ for(let i=1;i<s.length;i++) if(rIdx(s[i].rank)!==rIdx(s[i-1].rank)+1) return false; return true; }
 function analyze(cs){
   const n=cs.length, s=[...cs].sort(compareCard);
   if(n===1) return {ok:true,kind:'單張',high:s[0]};
   if(n===2 && s[0].rank===s[1].rank) return {ok:true,kind:'對子',high:s[1]};
   if(n===3 && s.every(c=>c.rank===s[0].rank)) return {ok:true,kind:'三條',high:s[2]};
-  if(n===4 && s.every(c=>c.rank===s[0].rank)) return {ok:true,kind:'鐵支',high:s[3]};
+  if(n===4){ return {ok:false}; } // 4 張不再視為鐵支
   if(n===5){
     const rc={}; s.forEach(c=>rc[c.rank]=(rc[c.rank]||0)+1);
     const vals=Object.values(rc).sort((a,b)=>b-a);
+    const keys=Object.keys(rc);
     const sameSuit=s.every(c=>c.suit===s[0].suit);
     const consec=isConsec(s);
     if(sameSuit&&consec) return {ok:true,kind:'同花順',high:s[4]};
+    if(vals[0]===4 && vals[1]===1){
+      const quadRank = keys.find(r=>rc[r]===4);
+      const high = s.filter(c=>c.rank===quadRank).slice(-1)[0];
+      return {ok:true,kind:'鐵支',high};
+    }
     if(vals[0]===3&&vals[1]===2){
-      const trip=Object.keys(rc).find(r=>rc[r]===3);
+      const trip=keys.find(r=>rc[r]===3);
       const high=s.filter(c=>c.rank===trip).slice(-1)[0];
       return {ok:true,kind:'葫蘆',high};
     }
@@ -356,7 +359,7 @@ function canBeat(a,b){
   return false;
 }
 
-/* 列舉組合 */
+/* 列舉組合（含鐵支 4+1） */
 function combos(hand){
   const res=[],map={};
   hand.forEach(c=>(map[c.rank]=map[c.rank]||[]).push(c));
@@ -365,14 +368,14 @@ function combos(hand){
     const a=map[r];
     if(a.length>=2) for(let i=0;i<a.length;i++) for(let j=i+1;j<a.length;j++) res.push([a[i],a[j]]);
     if(a.length>=3) for(let i=0;i<a.length;i++) for(let j=i+1;j<a.length;j++) for(let k=j+1;k<a.length;k++) res.push([a[i],a[j],a[k]]);
-    if(a.length===4) res.push(a.slice());
+    // 4張不直接列為一組
   }
   const n=hand.length;
   if(n>=5){
     for(let a=0;a<n-4;a++) for(let b=a+1;b<n-3;b++) for(let c=b+1;c<n-2;c++) for(let d=c+1;d<n-1;d++) for(let e=d+1;e<n;e++){
       const pack=[hand[a],hand[b],hand[c],hand[d],hand[e]];
       const an=analyze(pack);
-      if(an.ok && (an.kind==='順子'||an.kind==='葫蘆'||an.kind==='同花順')) res.push(pack);
+      if(an.ok && (an.kind==='順子'||an.kind==='葫蘆'||an.kind==='同花順'||an.kind==='鐵支')) res.push(pack);
     }
   }
   res.sort((x,y)=>{
@@ -384,7 +387,7 @@ function combos(hand){
   return res;
 }
 
-/* ===== FX ===== */
+/* FX（沿用 v22） */
 const fxLayer = document.getElementById('fx');
 function clearFX(){ fxLayer.innerHTML=''; document.getElementById('centerPanel').classList.remove('shake','highlight-pile'); }
 function spawnSymbol(text){
@@ -435,31 +438,23 @@ function triggerFX(kind, cards){
     document.getElementById('centerPanel').classList.add('highlight-pile');
   }
   if(includesSpade2){
-    spawnSymbol('♠2');
-    spawnRing();
-    spawnConfetti(['#000','#ffd54a','#fff'], 34);
-    document.getElementById('centerPanel').classList.add('shake');
+    spawnSymbol('♠2'); spawnRing();
+    spawnConfetti(['#000','#ffd54a','#fff'], 34); document.getElementById('centerPanel').classList.add('shake');
   }
   if(isSF){
-    spawnSymbol('同花順');
-    spawnRing();
-    spawnConfetti(['#e53935','#ffca28','#43a047','#1e88e5','#8e24aa'], 42);
-    document.getElementById('centerPanel').classList.add('shake');
+    spawnSymbol('同花順'); spawnRing();
+    spawnConfetti(['#e53935','#ffca28','#43a047','#1e88e5','#8e24aa'], 42); document.getElementById('centerPanel').classList.add('shake');
   }
   if(isFour){
-    spawnFlash();
-    spawnBolt(); spawnBolt();
-    spawnSymbol('鐵支');
-    document.getElementById('centerPanel').classList.add('shake');
+    spawnFlash(); spawnBolt(); spawnBolt(); spawnSymbol('鐵支'); document.getElementById('centerPanel').classList.add('shake');
   }
   if(isFull){
-    spawnRoll();
-    spawnSymbol('葫蘆');
+    spawnRoll(); spawnSymbol('葫蘆');
   }
   setTimeout(()=>{ document.getElementById('centerPanel').classList.remove('highlight-pile'); }, 950);
 }
 
-/* AI */
+/* AI（同前） */
 function pickLeaderCombo(all, enemyAlmostWin){
   const prefer = enemyAlmostWin ? ['同花順','鐵支','葫蘆','順子','三條','對子','單張']
                                 : ['順子','葫蘆','三條','對子','單張'];
@@ -588,7 +583,6 @@ function endRound(winnerIdx){
   updateScoreUI(); saveScores();
 
   showRound(per, winnerIdx);
-
   const zeroIdx = scores.findIndex(s=>s<=0);
   if(zeroIdx!==-1){ showSeries(); }
 }
