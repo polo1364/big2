@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>大老二 — 系列戰 v21（結算精簡＋特效）</title>
+<title>大老二 — 系列戰 v22（點擊選牌＋全特效＋完整結算）</title>
 <style>
 :root{
   --card-w:66px;--card-h:94px;--gap:8px;
@@ -46,7 +46,7 @@ h1{margin:10px 0 6px;font-weight:800;letter-spacing:.5px;font-size:18px}
   border:1px solid rgba(255,255,255,.14);
   border-radius:16px;padding:12px 16px;backdrop-filter:blur(6px);
   display:flex;flex-direction:column;align-items:center;gap:8px;
-  position:relative; /* 讓特效定位於此 */
+  position:relative; /* FX 容器定位 */
   overflow:visible;
 }
 #fx{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:5}
@@ -102,7 +102,7 @@ button[disabled]{opacity:.5;cursor:not-allowed}
 .mini.♥,.mini.♦{color:#d11}
 .tag{margin-left:auto;font-size:12px;opacity:.75}
 
-/* 結算面板（單局） */
+/* 結算（單局/系列戰） */
 .panel h2{margin:0 0 10px;font-size:20px}
 .pList{list-style:none;margin:0;padding:0}
 .pItem{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:10px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.12);margin-bottom:8px}
@@ -115,14 +115,8 @@ button[disabled]{opacity:.5;cursor:not-allowed}
 .rank{list-style:none;margin:8px 0 0;padding:0}
 .rank li{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.12);margin-bottom:8px}
 
-/* 牌桌特效 */
+/* ===== 牌桌特效 ===== */
 @keyframes fx-pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.1);opacity:1}100%{transform:scale(1);opacity:1}}
-@keyframes fx-ring{0%{transform:translate(-50%,-50%) scale(.4);opacity:.9}100%{transform:translate(-50%,-50%) scale(2.2);opacity:0}}
-@keyframes fx-confetti{
-  0%{transform:translate(var(--x,0),var(--y,0)) rotate(0deg);opacity:1}
-  100%{transform:translate(calc(var(--x,0) + var(--dx,0px)), calc(var(--y,0) + 120px)) rotate(360deg);opacity:0}
-}
-@keyframes fx-shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-8px)}40%,60%{transform:translateX(8px)}}
 .fx-symbol{
   position:absolute;left:50%;top:22%;transform:translate(-50%,-50%);font-weight:900;
   font-size:72px;line-height:1;border-radius:16px;padding:10px 16px;
@@ -130,10 +124,36 @@ button[disabled]{opacity:.5;cursor:not-allowed}
   color:#111;border:3px solid rgba(0,0,0,.2);box-shadow:0 10px 30px rgba(0,0,0,.35);
   animation:fx-pop .45s ease-out both;z-index:6
 }
-.fx-ring{position:absolute;left:50%;top:30%;width:220px;height:220px;border:4px solid rgba(255,255,255,.8);border-radius:50%;filter:blur(.4px);animation:fx-ring .9s ease-out forwards;z-index:4}
-.fx-confetti{position:absolute;width:10px;height:14px;border-radius:2px;animation:fx-confetti .8s linear forwards;opacity:.95;z-index:5}
-.shake{animation:fx-shake .5s ease-in-out 1}
 .highlight-pile .pile-card{box-shadow:0 0 0 3px #ffd54a, 0 8px 30px rgba(255,213,74,.45);transform:translateY(-2px)}
+@keyframes fx-ring{0%{transform:translate(-50%,-50%) scale(.4);opacity:.9}100%{transform:translate(-50%,-50%) scale(2.2);opacity:0}}
+.fx-ring{position:absolute;left:50%;top:30%;width:220px;height:220px;border:4px solid rgba(255,255,255,.8);border-radius:50%;filter:blur(.4px);animation:fx-ring .9s ease-out forwards;z-index:4}
+@keyframes fx-confetti{
+  0%{transform:translate(var(--x,0),var(--y,0)) rotate(0deg);opacity:1}
+  100%{transform:translate(calc(var(--x,0) + var(--dx,0px)), calc(var(--y,0) + 120px)) rotate(360deg);opacity:0}
+}
+.fx-confetti{position:absolute;width:10px;height:14px;border-radius:2px;animation:fx-confetti .8s linear forwards;opacity:.95;z-index:5}
+@keyframes fx-shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-8px)}40%,60%{transform:translateX(8px)}}
+.shake{animation:fx-shake .5s ease-in-out 1}
+/* 閃電＋閃光（鐵支） */
+@keyframes fx-flash{0%{opacity:.9}100%{opacity:0}}
+.fx-flash{position:absolute;inset:0;background:rgba(255,255,255,.9);animation:fx-flash .18s ease-out forwards;z-index:7}
+.fx-bolt{
+  position:absolute;width:4px;height:180px;border-radius:2px;
+  background:linear-gradient(#fff,#e3f2fd,#90caf9,#42a5f5,#0d47a1);
+  box-shadow:0 0 12px #90caf9, 0 0 24px #42a5f5;
+  transform-origin:top; z-index:6; opacity:.95;
+  animation:fx-pop .2s ease-out both;
+}
+/* 葫蘆滾動條 */
+@keyframes fx-roll{0%{transform:translateX(-60%) rotate(0)}100%{transform:translateX(160%) rotate(720deg)}}
+.fx-roll{
+  position:absolute;left:0;right:0;top:10%;margin:auto;width:max-content;
+  font-weight:900;font-size:48px;letter-spacing:.4em;
+  background:linear-gradient(90deg,#ffe082,#fff176,#ffd54f);
+  color:#4e342e;border:3px solid rgba(78,52,46,.25);border-radius:999px;padding:6px 16px;
+  box-shadow:0 8px 24px rgba(255,213,74,.35); z-index:6;
+  animation:fx-roll .9s ease-in-out forwards;
+}
 </style>
 </head>
 <body>
@@ -186,7 +206,7 @@ button[disabled]{opacity:.5;cursor:not-allowed}
   </div>
 </div>
 
-<!-- 系列戰結算（保留重開/關閉，以免卡死頁面） -->
+<!-- 系列戰結算 -->
 <div id="seriesOverlay" class="overlay">
   <div class="panel">
     <h2>系列戰結算（有人分數歸零）</h2>
@@ -364,7 +384,7 @@ function combos(hand){
   return res;
 }
 
-/* ===== 牌桌特效 ===== */
+/* ===== FX ===== */
 const fxLayer = document.getElementById('fx');
 function clearFX(){ fxLayer.innerHTML=''; document.getElementById('centerPanel').classList.remove('shake','highlight-pile'); }
 function spawnSymbol(text){
@@ -389,26 +409,54 @@ function spawnConfetti(colors= ['#000','#ffd54a','#e53935','#1e88e5'], n=26){
     setTimeout(()=>c.remove(), 900);
   }
 }
+function spawnFlash(){ const f=document.createElement('div'); f.className='fx-flash'; fxLayer.appendChild(f); setTimeout(()=>f.remove(),180); }
+function spawnBolt(){
+  const host = document.getElementById('centerPanel').getBoundingClientRect();
+  for(let i=0;i<3;i++){
+    const b=document.createElement('div'); b.className='fx-bolt';
+    const x = Math.random()*host.width*0.7 + host.width*0.15;
+    const rotate = (Math.random()*40-20);
+    b.style.left = x+'px'; b.style.top='-10px'; b.style.transform = `rotate(${rotate}deg)`;
+    fxLayer.appendChild(b);
+    setTimeout(()=>b.remove(), 500);
+  }
+}
+function spawnRoll(){
+  const r=document.createElement('div'); r.className='fx-roll'; r.textContent='葫蘆';
+  fxLayer.appendChild(r); setTimeout(()=>r.remove(), 900);
+}
 function triggerFX(kind, cards){
   clearFX();
   const includesSpade2 = cards.some(c=>c.rank==='2'&&c.suit==='♠');
-  if(includesSpade2 || kind==='同花順'){
-    // 高光當前牌堆
+  const isFour = (kind==='鐵支');
+  const isSF = (kind==='同花順');
+  const isFull = (kind==='葫蘆');
+  if(includesSpade2 || isSF || isFour || isFull){
     document.getElementById('centerPanel').classList.add('highlight-pile');
-    // 爆炸環＋抖動
-    spawnRing();
-    document.getElementById('centerPanel').classList.add('shake');
   }
   if(includesSpade2){
-    spawnSymbol('♠2'); // 大老二標誌
-    spawnConfetti(['#000','#ffd54a','#fff'], 32);
+    spawnSymbol('♠2');
+    spawnRing();
+    spawnConfetti(['#000','#ffd54a','#fff'], 34);
+    document.getElementById('centerPanel').classList.add('shake');
   }
-  if(kind==='同花順'){
+  if(isSF){
     spawnSymbol('同花順');
-    spawnConfetti(['#e53935','#ffca28','#43a047','#1e88e5','#8e24aa'], 40);
+    spawnRing();
+    spawnConfetti(['#e53935','#ffca28','#43a047','#1e88e5','#8e24aa'], 42);
+    document.getElementById('centerPanel').classList.add('shake');
   }
-  // 清除高光
-  setTimeout(()=>{ document.getElementById('centerPanel').classList.remove('highlight-pile'); }, 900);
+  if(isFour){
+    spawnFlash();
+    spawnBolt(); spawnBolt();
+    spawnSymbol('鐵支');
+    document.getElementById('centerPanel').classList.add('shake');
+  }
+  if(isFull){
+    spawnRoll();
+    spawnSymbol('葫蘆');
+  }
+  setTimeout(()=>{ document.getElementById('centerPanel').classList.remove('highlight-pile'); }, 950);
 }
 
 /* AI */
@@ -476,7 +524,6 @@ function play(i,cards){
   setLast(`${names[i]}：${toStr(cards)}（${an.kind}）`);
   logAppendPlay(names[i],cards,an.kind);
   renderPile(names[i],cards,an.kind);
-  // 觸發特效：含 ♠2 或 同花順
   triggerFX(an.kind, cards);
   if(players[i].length===0){ endRound(i); return; }
   next();
@@ -617,7 +664,7 @@ function renderHint(){
     groups[k].forEach(c=>{
       const row=document.createElement('div'); row.className='combo-row';
       c.forEach(card=>{ const m=document.createElement('div'); m.className='mini '+card.suit; m.textContent=card.suit+card.rank; row.appendChild(m); });
-      const tag=document.createElement('div'); tag.className='tag'; text= k; tag.textContent=k; row.appendChild(tag);
+      const tag=document.createElement('div'); tag.className='tag'; tag.textContent=k; row.appendChild(tag);
       row.onclick=()=>{
         document.querySelectorAll('#hand-bottom .card').forEach(el=>el.classList.remove('selected'));
         const hb=[...document.querySelectorAll('#hand-bottom .card')];
@@ -632,7 +679,7 @@ function renderHint(){
   });
 }
 
-/* 綁定與啟動 */
+/* 啟動 */
 document.getElementById('playBtn').onclick=onPlay;
 document.getElementById('passBtn').onclick=onPass;
 document.getElementById('dealBtn').onclick=deal;
