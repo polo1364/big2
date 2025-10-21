@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>大老二 — RWD v2（觸控修復＋不遮手牌＋清晰丟牌區）</title>
+<title>大老二 — RWD v3（手機不遮手牌）</title>
 <style>
   :root{
     --card-w: 56px;
@@ -44,12 +44,12 @@
   #info{font-size:13px;opacity:.9;margin-bottom:4px}
   #last-play{font-size:13px;opacity:.75;margin-bottom:6px;min-height:18px}
   #pile{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:6px}
+  .badge{display:inline-block;background:#22303a;border:1px solid rgba(255,255,255,.15);padding:2px 6px;border-radius:8px;margin-right:6px;font-size:12px}
   .pile-card{
     width:var(--pile-w);height:var(--pile-h);background:#fff;border-radius:8px;border:2px solid #cfd8dc;
     display:flex;align-items:center;justify-content:center;font-weight:700;
   }
   .pile-card.♥,.pile-card.♦{color:#d11}
-  .badge{display:inline-block;background:#22303a;border:1px solid rgba(255,255,255,.15);padding:2px 6px;border-radius:8px;margin-right:6px;font-size:12px}
   button{
     margin:4px;padding:10px 16px;font-size:15px;min-height:44px;min-width:44px;
     border:none;border-radius:10px;background:#3498db;color:#fff;cursor:pointer
@@ -68,19 +68,32 @@
   @keyframes fly{0%{transform:scale(1.06);opacity:0}100%{transform:scale(1);opacity:1}}
   #hintPanel{
     position:absolute;left:50%;transform:translateX(-50%);
-    width:var(--panel-w);max-width:960px;background:rgba(0,0,0,.86);
-    border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:10px;display:none;z-index:5
+    width:var(--panel-w);max-width:960px;background:rgba(0,0,0,.9);
+    border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:10px;display:none;z-index:6
   }
   #hintPanel h3{margin:0 0 8px;font-size:14px;color:#ffdd55}
-  .combo-list{display:flex;flex-wrap:wrap;gap:6px;max-height:40vh;overflow-y:auto}
+  .combo-list{display:flex;flex-wrap:wrap;gap:6px;max-height:46vh;overflow-y:auto}
   .combo{padding:6px 8px;background:#20303a;border:1px solid #3a5767;border-radius:8px;font-size:14px;cursor:pointer}
   .combo:hover{background:#315366}
   .tags{font-size:11px;opacity:.8;margin-left:6px}
   #hintClose{position:absolute;top:6px;right:8px}
-  #hintHandle{width:40px;height:4px;background:#748a96;border-radius:999px;margin:0 auto 8px;opacity:.8}
-  #overlay{position:absolute;inset:0;display:none;background:transparent;z-index:4}
-  #musicBtn{position:absolute;top:10px;right:10px;background:#3a5a70;z-index:6}
-  #logToggle{position:absolute;top:10px;left:10px;z-index:6}
+  #overlay{position:absolute;inset:0;display:none;background:transparent;z-index:5}
+  #musicBtn{position:absolute;top:10px;right:10px;background:#3a5a70;z-index:7}
+  #logToggle{position:absolute;top:10px;left:10px;z-index:7}
+
+  /* === 手機：不遮手牌的提示「條狀列」 === */
+  #hintStrip{
+    display:none;
+    width:96vw;max-width:960px;margin:6px auto 8px auto;padding:6px 6px;
+    background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.14);border-radius:10px;
+    overflow-x:auto;white-space:nowrap;gap:6px;scrollbar-width:thin
+  }
+  #hintStrip .chip{
+    display:inline-block;margin-right:6px;padding:6px 8px;border-radius:999px;
+    background:#20303a;border:1px solid #3a5767;font-size:13px;cursor:pointer
+  }
+  #hintStrip .chip .tags{margin-left:4px}
+
   body.is-mobile :root{ --card-w: 44px; --card-h: 62px; --gap: 4px; --pile-w: 34px; --pile-h: 48px;}
   body.is-mobile #left, body.is-mobile #right{ transform:translateY(-50%); }
   body.is-mobile .player:not(#bottom) .hand{ display:none }
@@ -97,10 +110,11 @@
   body.is-mobile #log{
     width:56vw;height:36vh;right:8px;bottom:calc(env(safe-area-inset-bottom,0) + 80px);font-size:11px;display:none
   }
-  /* 提示面板：手機為底部抽屜，不遮手牌（手牌自動上移） */
-  body.is-mobile #hintPanel{ bottom:calc(env(safe-area-inset-bottom,0) + var(--bar-h)); left:50%; transform:translateX(-50%); width:100vw; border-radius:14px 14px 0 0 }
-  body.is-mobile.hint-open #bottom{ bottom:calc(env(safe-area-inset-bottom,0) + var(--bar-h) + 44vh) }
-  body.is-mobile #overlay{ display:block } /* 用於點外面關閉抽屜 */
+  /* 提示面板：手機為頂部抽屜（避免遮住底部手牌） */
+  body.is-mobile #hintPanel{ top:0; bottom:auto; left:50%; transform:translateX(-50%); width:100vw; border-radius:0 0 14px 14px }
+  body.is-mobile #overlay{ display:block }
+  /* 提示條：手機顯示在玩家名字與手牌之間，不會遮住手牌 */
+  body.is-mobile #hintStrip{ display:block }
 </style>
 </head>
 <body>
@@ -115,7 +129,13 @@
     <div id="top" class="player"><div class="name" id="name-top"></div><div class="hand" id="hand-top"></div><div class="count" id="cnt-top"></div></div>
     <div id="left" class="player"><div class="name" id="name-left"></div><div class="hand" id="hand-left"></div><div class="count" id="cnt-left"></div></div>
     <div id="right" class="player"><div class="name" id="name-right"></div><div class="hand" id="hand-right"></div><div class="count" id="cnt-right"></div></div>
-    <div id="bottom" class="player"><div class="name" id="name-bottom">你</div><div class="hand" id="hand-bottom"></div><div class="count" id="cnt-bottom"></div></div>
+    <div id="bottom" class="player">
+      <div class="name" id="name-bottom">你</div>
+      <!-- 手機不遮手牌的提示條 -->
+      <div id="hintStrip" aria-label="快捷提示條（可橫向捲動）"></div>
+      <div class="hand" id="hand-bottom"></div>
+      <div class="count" id="cnt-bottom"></div>
+    </div>
 
     <div id="center">
       <div id="info">載入中...</div>
@@ -132,13 +152,12 @@
     <div id="actionBar" role="toolbar" aria-label="操作列">
       <button id="playBtn_m" disabled>出牌</button>
       <button id="passBtn_m" disabled>PASS</button>
-      <button id="hintBtn_m">可出</button>
+      <button id="hintBtn_m">提示</button>
       <button id="dealBtn_m">重發</button>
     </div>
 
     <div id="log" aria-label="戰況紀錄"></div>
     <div id="hintPanel" aria-label="提示面板">
-      <div id="hintHandle"></div>
       <button id="hintClose" class="btn-ghost">收起</button>
       <h3>可出的組合（點擊自動選擇）</h3>
       <div class="combo-list" id="comboList"></div>
@@ -147,7 +166,7 @@
   </div>
 
 <script>
-/* ====== 布局＆音樂 ====== */
+/* ====== 版面＆音樂 ====== */
 function applyLayout(){
   const isMobile = window.innerWidth <= 820 || window.innerHeight <= 650;
   document.body.classList.toggle('is-mobile', isMobile);
@@ -200,7 +219,7 @@ function render(){
     players[i].forEach((c,idx)=>{
       const d=document.createElement('div');
       d.className=`card ${c.suit}`; d.textContent=c.suit+c.rank;
-      d.dataset.idx = idx; // 關鍵：用索引對應牌，避免重複牌文字造成誤判
+      d.dataset.idx = idx;
       if(i!==0) d.classList.add('dim');
       area.appendChild(d);
     });
@@ -211,7 +230,7 @@ function render(){
   document.getElementById('cnt-left').innerText=players[3].length;
 }
 
-// 單一代理：只監聽一次，避免 click+pointer 雙觸發抵銷
+// 觸控：單一 pointerdown 代理，避免 click 與 pointer 雙重觸發
 document.getElementById('hand-bottom').addEventListener('pointerdown', e=>{
   const card=e.target.closest('.card'); if(!card) return;
   card.classList.toggle('selected');
@@ -361,12 +380,9 @@ function next(){
 }
 
 function selected(){
-  // 依 DOM 順序與 data-idx 對應，避免重複牌文字造成誤判
   const elCards=[...document.querySelectorAll('#hand-bottom .card')];
-  const selIdx=new Set([...document.querySelectorAll('#hand-bottom .card.selected')].map(el=>parseInt(el.dataset.idx,10)));
-  return elCards
-    .map((el,i)=> selIdx.has(parseInt(el.dataset.idx,10)) ? players[0][i] : null)
-    .filter(Boolean);
+  return elCards.filter(el=>el.classList.contains('selected'))
+                .map(el=>players[0][parseInt(el.dataset.idx,10)]);
 }
 
 function onPlay(){
@@ -381,55 +397,72 @@ function onPlay(){
 }
 document.getElementById('playBtn').onclick=onPlay;
 document.getElementById('passBtn').onclick=()=>{ if(turn!==0) return; info('你 PASS'); logPush('你 PASS'); playSound('pass'); next(); };
-document.getElementById('hintBtn').onclick=()=>toggleHints(true);
+document.getElementById('hintBtn').onclick=()=>openPanel();
 document.getElementById('dealBtn').onclick=deal;
 document.getElementById('playBtn_m').onclick=onPlay;
 document.getElementById('passBtn_m').onclick=()=>{ if(turn!==0) return; info('你 PASS'); logPush('你 PASS'); playSound('pass'); next(); };
-document.getElementById('hintBtn_m').onclick=()=>toggleHints(true);
+document.getElementById('hintBtn_m').onclick=()=>toggleMobileHints(); // 手機按鈕→切換條狀列
 document.getElementById('dealBtn_m').onclick=deal;
 
-/* ====== 提示面板：不遮手牌、可點外面關閉 ====== */
-const panel=document.getElementById('hintPanel');
-const overlay=document.getElementById('overlay');
-document.getElementById('hintClose').onclick=()=>{ panel.style.display='none'; document.body.classList.remove('hint-open'); overlay.style.display='none'; };
-overlay.onclick=()=>{ panel.style.display='none'; document.body.classList.remove('hint-open'); overlay.style.display='none'; };
-
-function toggleHints(show){
-  if(show===true) showHints();
-  else{
-    const open = panel.style.display!=='none' && panel.style.display!=='';
-    if(open){ panel.style.display='none'; document.body.classList.remove('hint-open'); overlay.style.display='none'; }
-    else showHints();
-  }
-}
-function showHints(){
-  const list=document.getElementById('comboList'); list.innerHTML='';
+/* ====== 提示：手機「條狀列」＋ 全功能面板 ====== */
+function legalCombos(){
   const hand=players[0]; let arr=combos(hand);
   if(firstTrick) arr=arr.filter(c=>c.some(x=>x.rank==='3'&&x.suit==='♣'));
   if(currentPlay) arr=arr.filter(c=>canBeat(c,currentPlay));
-  panel.style.display='block';
-  overlay.style.display = document.body.classList.contains('is-mobile') ? 'block' : 'none';
-  if(document.body.classList.contains('is-mobile')) document.body.classList.add('hint-open');
+  return arr;
+}
+// 手機快捷條（不遮手牌）
+const strip = document.getElementById('hintStrip');
+function populateStrip(){
+  strip.innerHTML='';
+  const arr = legalCombos();
+  if(arr.length===0){ strip.textContent='（目前沒有可出的牌）'; return; }
+  arr.slice(0,18).forEach(c=>{
+    const chip=document.createElement('div'); chip.className='chip'; chip.textContent=toStr(c);
+    const tag=document.createElement('span'); tag.className='tags'; tag.textContent=analyze(c).kind; chip.appendChild(tag);
+    chip.onclick=()=>{
+      document.querySelectorAll('#hand-bottom .card').forEach(el=>el.classList.remove('selected'));
+      const hb=[...document.querySelectorAll('#hand-bottom .card')];
+      const need=c.map(x=>x.suit+x.rank);
+      hb.forEach(el=>{ const key=el.textContent; const idx=need.indexOf(key); if(idx>-1){ el.classList.add('selected'); need.splice(idx,1); } });
+    };
+    strip.appendChild(chip);
+  });
+  const more=document.createElement('div'); more.className='chip'; more.textContent='更多…'; more.style.background='#29465a';
+  more.onclick=()=>openPanel();
+  strip.appendChild(more);
+}
+function toggleMobileHints(){
+  if(strip.dataset.open==='1'){ strip.dataset.open='0'; strip.style.display='none'; }
+  else { strip.dataset.open='1'; strip.style.display='block'; populateStrip(); }
+}
+// 桌機/全功能面板
+const panel=document.getElementById('hintPanel');
+const overlay=document.getElementById('overlay');
+document.getElementById('hintClose').onclick=closePanel;
+overlay.onclick=closePanel;
+function openPanel(){
+  const list=document.getElementById('comboList'); list.innerHTML='';
+  const arr=legalCombos();
+  panel.style.display='block'; overlay.style.display = document.body.classList.contains('is-mobile') ? 'block' : 'none';
   if(arr.length===0){ const none=document.createElement('div'); none.innerText='（目前沒有可出的牌）'; list.appendChild(none); return; }
-  arr.slice(0,150).forEach(c=>{
+  arr.slice(0,180).forEach(c=>{
     const an=analyze(c);
     const div=document.createElement('div'); div.className='combo'; div.innerText=toStr(c);
     const tag=document.createElement('span'); tag.className='tags'; tag.innerText=an.kind; div.appendChild(tag);
     div.onclick=()=>{
-      // 先清空
       document.querySelectorAll('#hand-bottom .card').forEach(el=>el.classList.remove('selected'));
-      // 逐一匹配 rank/suit（從左到右賦值，避免同點數多張時錯配）
       const hb=[...document.querySelectorAll('#hand-bottom .card')];
       const need=c.map(x=>x.suit+x.rank);
-      hb.forEach(el=>{
-        const key=el.textContent;
-        const idx=need.indexOf(key);
-        if(idx>-1){ el.classList.add('selected'); need.splice(idx,1); }
-      });
+      hb.forEach(el=>{ const key=el.textContent; const idx=need.indexOf(key); if(idx>-1){ el.classList.add('selected'); need.splice(idx,1); } });
     };
     list.appendChild(div);
   });
 }
+function closePanel(){ panel.style.display='none'; overlay.style.display='none'; }
+
+/* ====== 戰況面板（手機開關） ====== */
+document.getElementById('logToggle').onclick=()=>{ const l=document.getElementById('log'); l.style.display = (l.style.display==='none'||!l.style.display)?'block':'none'; };
 
 /* ====== 開始 ====== */
 deal();
