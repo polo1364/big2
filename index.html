@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>大老二 — RWD 修正版</title>
+<title>大老二 — RWD v2（觸控修復＋不遮手牌＋清晰丟牌區）</title>
 <style>
   :root{
     --card-w: 56px;
@@ -12,6 +12,8 @@
     --panel-w: min(92vw, 960px);
     --bar-h: 64px;
     --radius: 12px;
+    --pile-w: 42px;
+    --pile-h: 58px;
   }
   *{box-sizing:border-box}
   body{margin:0;background:radial-gradient(#1b2530,#000);color:#fff;font-family:"Microsoft JhengHei",sans-serif;text-align:center;overflow:hidden}
@@ -37,10 +39,17 @@
   #center{
     position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);
     width:var(--panel-w);max-width:92vw;background:rgba(255,255,255,.08);
-    padding:10px 16px;border-radius:var(--radius);text-align:center
+    padding:10px 16px;border-radius:var(--radius);text-align:center;z-index:2
   }
   #info{font-size:13px;opacity:.9;margin-bottom:4px}
   #last-play{font-size:13px;opacity:.75;margin-bottom:6px;min-height:18px}
+  #pile{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:6px}
+  .pile-card{
+    width:var(--pile-w);height:var(--pile-h);background:#fff;border-radius:8px;border:2px solid #cfd8dc;
+    display:flex;align-items:center;justify-content:center;font-weight:700;
+  }
+  .pile-card.♥,.pile-card.♦{color:#d11}
+  .badge{display:inline-block;background:#22303a;border:1px solid rgba(255,255,255,.15);padding:2px 6px;border-radius:8px;margin-right:6px;font-size:12px}
   button{
     margin:4px;padding:10px 16px;font-size:15px;min-height:44px;min-width:44px;
     border:none;border-radius:10px;background:#3498db;color:#fff;cursor:pointer
@@ -52,27 +61,30 @@
   #log{
     position:absolute;right:10px;bottom:calc(env(safe-area-inset-bottom,0) + 10px);
     width:260px;height:260px;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.12);
-    border-radius:10px;overflow-y:auto;font-size:12px;text-align:left;padding:6px
+    border-radius:10px;overflow-y:auto;font-size:12px;text-align:left;padding:6px;z-index:2
   }
   .log-entry{margin-bottom:4px}
   .fade{animation:fly .5s ease-out forwards}
   @keyframes fly{0%{transform:scale(1.06);opacity:0}100%{transform:scale(1);opacity:1}}
   #hintPanel{
-    position:absolute;bottom:calc(env(safe-area-inset-bottom,0) + 90px);left:50%;transform:translateX(-50%);
-    width:var(--panel-w);max-width:960px;background:rgba(0,0,0,.72);
-    border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px;display:none;z-index:4
+    position:absolute;left:50%;transform:translateX(-50%);
+    width:var(--panel-w);max-width:960px;background:rgba(0,0,0,.86);
+    border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:10px;display:none;z-index:5
   }
-  #hintPanel h3{margin:4px 0 8px;font-size:14px;color:#ffdd55}
-  .combo-list{display:flex;flex-wrap:wrap;gap:6px;max-height:160px;overflow-y:auto}
+  #hintPanel h3{margin:0 0 8px;font-size:14px;color:#ffdd55}
+  .combo-list{display:flex;flex-wrap:wrap;gap:6px;max-height:40vh;overflow-y:auto}
   .combo{padding:6px 8px;background:#20303a;border:1px solid #3a5767;border-radius:8px;font-size:14px;cursor:pointer}
   .combo:hover{background:#315366}
   .tags{font-size:11px;opacity:.8;margin-left:6px}
-  #musicBtn{position:absolute;top:10px;right:10px;background:#3a5a70;z-index:5}
-  #logToggle{position:absolute;top:10px;left:10px;z-index:5}
-  body.is-mobile :root{ --card-w: 44px; --card-h: 62px; --gap: 4px; }
+  #hintClose{position:absolute;top:6px;right:8px}
+  #hintHandle{width:40px;height:4px;background:#748a96;border-radius:999px;margin:0 auto 8px;opacity:.8}
+  #overlay{position:absolute;inset:0;display:none;background:transparent;z-index:4}
+  #musicBtn{position:absolute;top:10px;right:10px;background:#3a5a70;z-index:6}
+  #logToggle{position:absolute;top:10px;left:10px;z-index:6}
+  body.is-mobile :root{ --card-w: 44px; --card-h: 62px; --gap: 4px; --pile-w: 34px; --pile-h: 48px;}
   body.is-mobile #left, body.is-mobile #right{ transform:translateY(-50%); }
   body.is-mobile .player:not(#bottom) .hand{ display:none }
-  body.is-mobile #center{ top:34%; width:94vw }
+  body.is-mobile #center{ top:30%; width:94vw }
   #actionBar{
     position:fixed;left:0;right:0;bottom:0;display:none;gap:8px;
     padding:8px 12px calc(env(safe-area-inset-bottom,0) + 8px);
@@ -85,12 +97,10 @@
   body.is-mobile #log{
     width:56vw;height:36vh;right:8px;bottom:calc(env(safe-area-inset-bottom,0) + 80px);font-size:11px;display:none
   }
-  body.is-mobile #hintPanel{
-    width:100vw;left:0;transform:none;bottom:calc(env(safe-area-inset-bottom,0) + var(--bar-h));
-    border-radius:14px 14px 0 0; padding-bottom:calc(env(safe-area-inset-bottom,0) + 10px)
-  }
-  /* 提升底部手牌避免被工具列遮住 */
-  body.is-mobile #bottom{ bottom:calc(env(safe-area-inset-bottom,0) + var(--bar-h) + 12px) }
+  /* 提示面板：手機為底部抽屜，不遮手牌（手牌自動上移） */
+  body.is-mobile #hintPanel{ bottom:calc(env(safe-area-inset-bottom,0) + var(--bar-h)); left:50%; transform:translateX(-50%); width:100vw; border-radius:14px 14px 0 0 }
+  body.is-mobile.hint-open #bottom{ bottom:calc(env(safe-area-inset-bottom,0) + var(--bar-h) + 44vh) }
+  body.is-mobile #overlay{ display:block } /* 用於點外面關閉抽屜 */
 </style>
 </head>
 <body>
@@ -100,14 +110,17 @@
   <audio id="bgm" loop autoplay>
     <source src="https://actions.google.com/sounds/v1/ambiences/board_game_ambience.ogg" type="audio/ogg">
   </audio>
+
   <div class="table" id="table">
     <div id="top" class="player"><div class="name" id="name-top"></div><div class="hand" id="hand-top"></div><div class="count" id="cnt-top"></div></div>
     <div id="left" class="player"><div class="name" id="name-left"></div><div class="hand" id="hand-left"></div><div class="count" id="cnt-left"></div></div>
     <div id="right" class="player"><div class="name" id="name-right"></div><div class="hand" id="hand-right"></div><div class="count" id="cnt-right"></div></div>
     <div id="bottom" class="player"><div class="name" id="name-bottom">你</div><div class="hand" id="hand-bottom"></div><div class="count" id="cnt-bottom"></div></div>
+
     <div id="center">
       <div id="info">載入中...</div>
       <div id="last-play"></div>
+      <div id="pile" aria-label="丟牌區"></div>
       <div class="controls">
         <button id="playBtn" disabled>出牌</button>
         <button id="passBtn" disabled>PASS</button>
@@ -115,19 +128,26 @@
         <button id="dealBtn">重新發牌</button>
       </div>
     </div>
+
     <div id="actionBar" role="toolbar" aria-label="操作列">
       <button id="playBtn_m" disabled>出牌</button>
       <button id="passBtn_m" disabled>PASS</button>
       <button id="hintBtn_m">可出</button>
       <button id="dealBtn_m">重發</button>
     </div>
+
     <div id="log" aria-label="戰況紀錄"></div>
     <div id="hintPanel" aria-label="提示面板">
+      <div id="hintHandle"></div>
+      <button id="hintClose" class="btn-ghost">收起</button>
       <h3>可出的組合（點擊自動選擇）</h3>
       <div class="combo-list" id="comboList"></div>
     </div>
+    <div id="overlay"></div>
   </div>
+
 <script>
+/* ====== 布局＆音樂 ====== */
 function applyLayout(){
   const isMobile = window.innerWidth <= 820 || window.innerHeight <= 650;
   document.body.classList.toggle('is-mobile', isMobile);
@@ -147,6 +167,7 @@ musicBtn.addEventListener('click', ()=>{ musicOn=!musicOn; bgm.muted=!musicOn; u
 document.addEventListener('pointerdown', ()=>{ if(bgm.paused && musicOn){ bgm.play().catch(()=>{});} }, { once:true });
 updateMusicBtn();
 
+/* ====== 遊戲資料 ====== */
 const SUITS=['♣','♦','♥','♠'], RANKS=['3','4','5','6','7','8','9','10','J','Q','K','A','2'];
 const suitOrder={'♣':0,'♦':1,'♥':2,'♠':3};
 const rIdx=r=>RANKS.indexOf(r);
@@ -154,38 +175,33 @@ const compareCard=(a,b)=>(rIdx(a.rank)-rIdx(b.rank))||(suitOrder[a.suit]-suitOrd
 let deck=[], players=[[],[],[],[]], turn=0, currentPlay=null, lastWinner=-1, firstTrick=true, names=[];
 const logBox=document.getElementById('log');
 const info = t => document.getElementById('info').innerText=t;
-const setLast = t => document.getElementById('last-play').innerText=t||'';
+const lastText = t => document.getElementById('last-play').innerText=t||'';
 function logPush(t){ const d=document.createElement('div'); d.className='log-entry fade'; d.innerText=t; logBox.prepend(d); }
 function randName(){const a="王李張陳林吳黃蔡楊許鄭何郭羅高胡蕭潘江鍾曾賴呂孫魏葉阮邱彭顏謝宋唐馮邵韓曹邢顧";
 const b="凱宇家豪志偉冠廷建宏志豪俊傑明哲冠霖俊宇承翰柏宇宗憲怡君欣怡雅婷雅雯佳蓉佩珊惠雯志玲美玲";
 function pick(s,n){let o="";for(let i=0;i<n;i++)o+=s[Math.floor(Math.random()*s.length)];return o;} return pick(a,1)+pick(b,Math.random()<0.5?1:2); }
 function playSound(type){
-  const url={
-    play:"https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg",
-    pass:"https://actions.google.com/sounds/v1/cartoon/wood_plank_clank.ogg",
-    start:"https://actions.google.com/sounds/v1/cartoon/slide_whistle_up.ogg",
-    win:"https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"
-  }[type];
+  const url={ play:"https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg",
+              pass:"https://actions.google.com/sounds/v1/cartoon/wood_plank_clank.ogg",
+              start:"https://actions.google.com/sounds/v1/cartoon/slide_whistle_up.ogg",
+              win:"https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg" }[type];
   if(!url) return; const a=new Audio(url); a.volume=0.35; a.play().catch(()=>{});
 }
 
+/* ====== 發牌與渲染 ====== */
 function buildDeck(){ deck=[]; for(const s of SUITS){ for(const r of RANKS){ deck.push({suit:s,rank:r}); } } }
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 function findStart(){ for(let i=0;i<4;i++){ if(players[i].some(c=>c.rank==='3'&&c.suit==='♣')) return i; } return 0; }
+
 function render(){
   const ids=['hand-bottom','hand-right','hand-top','hand-left'];
   ids.forEach((id,i)=>{
     const area=document.getElementById(id); area.innerHTML='';
-    players[i].forEach(c=>{
+    players[i].forEach((c,idx)=>{
       const d=document.createElement('div');
       d.className=`card ${c.suit}`; d.textContent=c.suit+c.rank;
-      if(i===0){
-        const toggle=()=>d.classList.toggle('selected');
-        d.addEventListener('click', toggle);
-        d.addEventListener('pointerup', toggle, {passive:true});
-      } else {
-        d.classList.add('dim');
-      }
+      d.dataset.idx = idx; // 關鍵：用索引對應牌，避免重複牌文字造成誤判
+      if(i!==0) d.classList.add('dim');
       area.appendChild(d);
     });
   });
@@ -195,13 +211,19 @@ function render(){
   document.getElementById('cnt-left').innerText=players[3].length;
 }
 
+// 單一代理：只監聽一次，避免 click+pointer 雙觸發抵銷
+document.getElementById('hand-bottom').addEventListener('pointerdown', e=>{
+  const card=e.target.closest('.card'); if(!card) return;
+  card.classList.toggle('selected');
+}, {passive:true});
+
 function updateTurnUI(){
   const mine = (turn===0);
   ['playBtn','passBtn','playBtn_m','passBtn_m'].forEach(id=>{
     const el=document.getElementById(id);
     if(el) el.disabled = !mine;
   });
-  info(mine ? '輪到你' : `等待 ${names[turn]} 出牌…`);
+  info(mine ? (firstTrick?'輪到你（首攻需含 ♣3）':'輪到你') : `等待 ${names[turn]} 出牌…`);
 }
 
 function deal(){
@@ -209,7 +231,7 @@ function deal(){
   document.getElementById('name-right').innerText=names[1];
   document.getElementById('name-top').innerText=names[2];
   document.getElementById('name-left').innerText=names[3];
-  logBox.innerHTML=''; setLast('');
+  logBox.innerHTML=''; lastText(''); document.getElementById('pile').innerHTML='';
   buildDeck(); shuffle(deck);
   players=[[],[],[],[]];
   for(let i=0;i<52;i++) players[i%4].push(deck[i]);
@@ -220,6 +242,7 @@ function deal(){
   if(turn!==0) setTimeout(aiPlay,700);
 }
 
+/* ====== 牌型與比大小 ====== */
 function isConsec(s){ for(let i=1;i<s.length;i++){ if(rIdx(s[i].rank)!==rIdx(s[i-1].rank)+1) return false; } return true; }
 function analyze(cs){
   const n=cs.length, s=[...cs].sort(compareCard);
@@ -257,6 +280,7 @@ function canBeat(a,b){
   return false;
 }
 
+/* ====== 組合生成 ====== */
 function combos(hand){
   const res=[],map={};
   hand.forEach(c=>(map[c.rank]=map[c.rank]||[]).push(c));
@@ -285,6 +309,7 @@ function combos(hand){
   return res;
 }
 
+/* ====== AI ====== */
 function aiPlay(){
   const i=turn, hand=players[i];
   if(hand.length===1){ play(i,[hand[0]]); return; }
@@ -306,39 +331,44 @@ function aiPlay(){
   if(choice) play(i,choice); else { info(`${names[i]} PASS`); logPush(`${names[i]} PASS`); playSound('pass'); next(); }
 }
 
+/* ====== 出牌、回合、丟牌區 UI ====== */
 function toStr(cards){ return cards.map(c=>c.suit+c.rank).join(' '); }
+function renderPile(playerName,cards,kind){
+  const pile=document.getElementById('pile'); pile.innerHTML='';
+  const who=document.createElement('div'); who.className='badge'; who.innerText=playerName;
+  const k=document.createElement('div'); k.className='badge'; k.innerText=kind;
+  const row=document.createElement('div'); row.style.display='flex'; row.style.justifyContent='center'; row.style.gap='8px'; row.style.flexWrap='wrap';
+  cards.forEach(c=>{
+    const d=document.createElement('div'); d.className='pile-card '+c.suit; d.textContent=c.suit+c.rank; row.appendChild(d);
+  });
+  pile.appendChild(who); pile.appendChild(k); pile.appendChild(row);
+}
 function play(i,cards){
   cards.forEach(c=>{ const idx=players[i].findIndex(p=>p.rank===c.rank&&p.suit===c.suit); if(idx>-1) players[i].splice(idx,1); });
   render();
   const an=analyze(cards);
   currentPlay=cards; lastWinner=i; firstTrick=false;
-  const txt=`${names[i]}：${toStr(cards)}（${an.kind}）`;
-  setLast(txt); logPush(txt); playSound('play');
+  lastText(`${names[i]} 出牌`); renderPile(names[i], cards, an.kind); logPush(`${names[i]}：${toStr(cards)}（${an.kind}）`); playSound('play');
   if(players[i].length===0){ info(`${names[i]} 脫手勝利！`); logPush(`${names[i]} 獲勝！`); playSound('win'); turn=-1; return; }
   next();
 }
 function next(){
   if(turn<0) return;
   turn=(turn+1)%4;
-  if(turn===lastWinner){ currentPlay=null; info(`${names[turn]} 重新出牌`); }
+  if(turn===lastWinner){ currentPlay=null; lastText(`${names[turn]} 重新出牌`); document.getElementById('pile').innerHTML=''; }
   updateTurnUI();
   if(turn!==0) setTimeout(aiPlay,800);
 }
-function updateTurnUI(){
-  const mine = (turn===0);
-  ['playBtn','passBtn','playBtn_m','passBtn_m'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(el) el.disabled = !mine;
-  });
-  if(mine && firstTrick){
-    const hasClub3 = players[0].some(c=>c.rank==='3'&&c.suit==='♣');
-    document.getElementById('info').innerText = hasClub3 ? '輪到你（首攻需含 ♣3）' : '輪到你，但此局非你首攻';
-  } else {
-    document.getElementById('info').innerText = mine ? '輪到你' : `等待 ${names[turn]} 出牌…`;
-  }
+
+function selected(){
+  // 依 DOM 順序與 data-idx 對應，避免重複牌文字造成誤判
+  const elCards=[...document.querySelectorAll('#hand-bottom .card')];
+  const selIdx=new Set([...document.querySelectorAll('#hand-bottom .card.selected')].map(el=>parseInt(el.dataset.idx,10)));
+  return elCards
+    .map((el,i)=> selIdx.has(parseInt(el.dataset.idx,10)) ? players[0][i] : null)
+    .filter(Boolean);
 }
 
-function selected(){ return [...document.querySelectorAll('#hand-bottom .selected')].map(e=>({suit:e.textContent[0],rank:e.textContent.slice(1)})); }
 function onPlay(){
   if(turn!==0) return;
   const cs=selected();
@@ -358,31 +388,50 @@ document.getElementById('passBtn_m').onclick=()=>{ if(turn!==0) return; info('�
 document.getElementById('hintBtn_m').onclick=()=>toggleHints(true);
 document.getElementById('dealBtn_m').onclick=deal;
 
+/* ====== 提示面板：不遮手牌、可點外面關閉 ====== */
+const panel=document.getElementById('hintPanel');
+const overlay=document.getElementById('overlay');
+document.getElementById('hintClose').onclick=()=>{ panel.style.display='none'; document.body.classList.remove('hint-open'); overlay.style.display='none'; };
+overlay.onclick=()=>{ panel.style.display='none'; document.body.classList.remove('hint-open'); overlay.style.display='none'; };
+
 function toggleHints(show){
-  const panel=document.getElementById('hintPanel');
-  if(show===true) showHints(); else panel.style.display = (panel.style.display==='none'||!panel.style.display)?'block':'none';
+  if(show===true) showHints();
+  else{
+    const open = panel.style.display!=='none' && panel.style.display!=='';
+    if(open){ panel.style.display='none'; document.body.classList.remove('hint-open'); overlay.style.display='none'; }
+    else showHints();
+  }
 }
 function showHints(){
   const list=document.getElementById('comboList'); list.innerHTML='';
   const hand=players[0]; let arr=combos(hand);
   if(firstTrick) arr=arr.filter(c=>c.some(x=>x.rank==='3'&&x.suit==='♣'));
   if(currentPlay) arr=arr.filter(c=>canBeat(c,currentPlay));
-  const panel=document.getElementById('hintPanel'); panel.style.display='block';
+  panel.style.display='block';
+  overlay.style.display = document.body.classList.contains('is-mobile') ? 'block' : 'none';
+  if(document.body.classList.contains('is-mobile')) document.body.classList.add('hint-open');
   if(arr.length===0){ const none=document.createElement('div'); none.innerText='（目前沒有可出的牌）'; list.appendChild(none); return; }
   arr.slice(0,150).forEach(c=>{
     const an=analyze(c);
     const div=document.createElement('div'); div.className='combo'; div.innerText=toStr(c);
     const tag=document.createElement('span'); tag.className='tags'; tag.innerText=an.kind; div.appendChild(tag);
     div.onclick=()=>{
+      // 先清空
       document.querySelectorAll('#hand-bottom .card').forEach(el=>el.classList.remove('selected'));
-      const need={}; c.forEach(x=>need[x.suit+x.rank]=(need[x.suit+x.rank]||0)+1);
-      document.querySelectorAll('#hand-bottom .card').forEach(el=>{ const key=el.textContent; if(need[key]>0){ el.classList.add('selected'); need[key]--; } });
+      // 逐一匹配 rank/suit（從左到右賦值，避免同點數多張時錯配）
+      const hb=[...document.querySelectorAll('#hand-bottom .card')];
+      const need=c.map(x=>x.suit+x.rank);
+      hb.forEach(el=>{
+        const key=el.textContent;
+        const idx=need.indexOf(key);
+        if(idx>-1){ el.classList.add('selected'); need.splice(idx,1); }
+      });
     };
     list.appendChild(div);
   });
 }
-document.getElementById('logToggle').onclick=()=>{ const l=document.getElementById('log'); l.style.display = (l.style.display==='none'||!l.style.display)?'block':'none'; };
 
+/* ====== 開始 ====== */
 deal();
 </script>
 </body>
