@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>大老二 — 介面重設＋計分模式（系列戰 v5）</title>
+<title>大老二 — 介面重設＋計分模式（系列戰 v6）</title>
 <style>
 :root{
   --card-w:56px;--card-h:80px;--gap:6px;--panel-w:min(92vw,980px);
@@ -13,12 +13,15 @@
 body{margin:0;background:radial-gradient(#162333,#0b121a);color:#e6eef6;font-family:"Microsoft JhengHei",system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;user-select:none;overflow:hidden}
 h1{margin:10px 0 6px;font-weight:800;letter-spacing:.5px;font-size:18px}
 #stage{position:relative;width:100%;height:100dvh;display:grid;grid-template-rows:auto 1fr auto}
-.topbar{display:flex;justify-content:space-between;align-items:center;padding:6px 10px}
-.topbar .left{display:flex;gap:8px;align-items:center}
-button{border:none;border-radius:10px;background:var(--primary);color:#fff;padding:9px 14px;min-height:40px;cursor:pointer;font-weight:700}
-button:hover{background:var(--primary-dark)}
-button:disabled{opacity:.5;cursor:not-allowed}
-.btn-ghost{background:transparent;border:1px solid rgba(255,255,255,.18)}
+.topbar{display:flex;justify-content:center;align-items:center;padding:6px 10px}
+/* 浮動重置按鈕（牌桌左上角） */
+#resetScoreBtn{
+  position:absolute;left:8px;top:8px;z-index:6;
+  border:none;border-radius:10px;background:transparent;color:#e6eef6;
+  padding:8px 10px;min-height:36px;cursor:pointer;font-weight:700;
+  border:1px solid rgba(255,255,255,.2)
+}
+#resetScoreBtn:hover{background:rgba(255,255,255,.08)}
 .table{position:relative;flex:1;display:grid;grid-template-columns:1fr auto 1fr;grid-template-rows:1fr auto 1fr;height:100%;gap:6px}
 .player{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
 .name{font-weight:800;letter-spacing:.5px}
@@ -103,25 +106,23 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .pExplain{opacity:.85;font-size:12px}
 .pRight{display:flex;gap:12px;align-items:center}
 .pScore{font-weight:800}
-/* 手機優化 */
+/* 手機直式調整：縮小戰況、縮小中央面板寬度，避免遮到左右家張數 */
 @media (max-width: 820px){
   :root{--card-w:46px;--card-h:66px;--gap:4px;--pile-w:36px;--pile-h:50px}
-  #centerPanel{width:96vw}
-  #logCenter{height:24vh}
+  #centerPanel{width:82vw}
+  #logCenter{height:18vh}
 }
 </style>
 </head>
 <body>
 <div id="stage">
   <div class="topbar">
-    <div class="left">
-      <h1>大老二</h1>
-      <button class="btn-ghost" id="resetScoreBtn">重置分數(10000)</button>
-    </div>
-    <div class="right"></div>
+    <h1>大老二</h1>
   </div>
 
   <div class="table">
+    <button id="resetScoreBtn">重置分數(10000)</button>
+
     <div id="p-top" class="player"><div class="name" id="name-top"></div><div class="score" id="score-top">10000 分</div><div class="hand" id="hand-top"></div><div class="count" id="cnt-top"></div></div>
     <div id="p-left" class="player"><div class="name" id="name-left"></div><div class="score" id="score-left">10000 分</div><div class="hand" id="hand-left"></div><div class="count" id="cnt-left"></div></div>
     <div id="centerPanel">
@@ -453,11 +454,10 @@ let pendingNextAction = null; // 'deal' or 'series'
 function endRound(winnerIdx){
   const detail=[];
   const perPlayer = []; // {i, name, delta, explain, score}
+  let totalGain = 0;
+  // 先計算每個輸家的懲罰並扣分
   for(let i=0;i<4;i++){
-    if(i===winnerIdx){
-      perPlayer.push({i,name:names[i],delta:0,explain:'本局勝利（不加不扣）',score:scores[i]});
-      continue;
-    }
+    if(i===winnerIdx) continue;
     const remain=players[i];
     let pen = remain.length * 10;
     const explains=[];
@@ -467,14 +467,18 @@ function endRound(winnerIdx){
     if(hasFourOfKind(remain)){ pen *= 2; explains.push('鐵支 ×2'); }
     if(hasStraightFlush(remain)){ pen *= 2; explains.push('同花順 ×2'); }
     scores[i] -= pen;
+    totalGain += pen;
     perPlayer.push({i,name:names[i],delta:-pen,explain:explains.join('、'),score:scores[i]});
     detail.push(`${names[i]} -${pen} 分（${explains.join('、')}）`);
   }
+  // 贏家吃分：加總所有輸家的懲罰
+  scores[winnerIdx] += totalGain;
+  perPlayer.push({i:winnerIdx,name:names[winnerIdx],delta:+totalGain,explain:`收取其他玩家懲罰總和 +${totalGain} 分`,score:scores[winnerIdx]});
+
   saveScores(); updateScoreUI();
-  logAppendText(`🏁 ${names[winnerIdx]} 脫手，結束本局。`);
+  logAppendText(`🏁 ${names[winnerIdx]} 脫手，結束本局（贏家 +${totalGain} 分）。`);
   detail.forEach(t=>logAppendText('　• '+t));
 
-  // 顯示單局結算面板（由玩家按「繼續」）
   const seriesOver = scores.some(s=>s<=0);
   showRoundOverlay(winnerIdx, perPlayer, seriesOver);
 }
