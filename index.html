@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>大老二 — 系列戰 v19（點擊選牌｜禁用滑動選取）</title>
+<title>大老二 — 系列戰 v20（點擊選牌＋結算面板回歸）</title>
 <style>
 :root{
   --card-w:66px;--card-h:94px;--gap:8px;
-  --pile-w:48px;--pile-h:66px;
+  --pile-w:46px;--pile-h:63px;
   --panel-w:min(92vw,980px);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -26,12 +26,7 @@ h1{margin:10px 0 6px;font-weight:800;letter-spacing:.5px;font-size:18px}
 .name{font-weight:800;letter-spacing:.5px}
 .score{font-size:12px;opacity:.9;background:#0d2535;border:1px solid rgba(255,255,255,.16);padding:3px 8px;border-radius:999px}
 .player:not(#p-bottom) .hand{display:none}
-.hand{
-  display:flex;gap:var(--gap);max-width:96vw;overflow-x:auto;padding:6px 4px;
-  /* 保留水平滑動以便看完整手牌，但不以滑動選牌 */
-  touch-action:pan-x;
-  pointer-events:auto
-}
+.hand{display:flex;gap:var(--gap);max-width:96vw;overflow-x:auto;padding:6px 4px;touch-action:pan-x;pointer-events:auto}
 #hand-bottom.two-rows{flex-wrap:wrap;row-gap:10px;justify-content:center;overflow-x:hidden}
 #hand-bottom.two-rows .card{ width:var(--card-w-2);height:calc(var(--card-w-2)*1.42);min-width:var(--card-w-2); }
 .card{
@@ -40,10 +35,8 @@ h1{margin:10px 0 6px;font-weight:800;letter-spacing:.5px;font-size:18px}
   background:#fff;border-radius:14px;border:2px solid #cfd8dc;color:#0e141a;
   display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;
   transition:transform .18s, border-color .18s, box-shadow .18s;
-  /* iOS Safari：避免 300ms 點擊延遲，並避免把點擊視為滾動手勢 */
   touch-action:manipulation;
 }
-/* 擴大觸控命中區域但不攔截事件 */
 .card::after{content:"";position:absolute;inset:-8px;border-radius:18px;pointer-events:none;}
 .card.♥,.card.♦{color:#d11}
 .selected{transform:translateY(-16px);border-color:#ffd866;box-shadow:0 10px 22px rgba(255,216,102,.35)}
@@ -61,7 +54,7 @@ h1{margin:10px 0 6px;font-weight:800;letter-spacing:.5px;font-size:18px}
   font-weight:800;font-size:16px}
 .pile-card.♥,.pile-card.♦{color:#d11}
 #logCenter{
-  width:100%;max-width:920px;height:140px;overflow-y:auto;border:1px dashed rgba(255,255,255,.18);border-radius:12px;
+  width:100%;max-width:860px;height:120px;overflow-y:auto;border:1px dashed rgba(255,255,255,.18);border-radius:12px;
   padding:8px;background:rgba(0,0,0,.18);font-size:12px;display:flex;flex-direction:column;
 }
 .log-line{display:flex;align-items:center;gap:8px;margin:3px 0}
@@ -83,6 +76,7 @@ button[disabled]{opacity:.5;cursor:not-allowed}
 #p-left{grid-column:1;grid-row:2}
 #p-right{grid-column:3;grid-row:2}
 #p-bottom{grid-column:2;grid-row:3;justify-content:flex-start}
+
 /* 提示面板（卡片式） */
 #hintOverlay{ position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:30;padding:10px }
 #hintPanel{
@@ -103,8 +97,27 @@ button[disabled]{opacity:.5;cursor:not-allowed}
 .mini{width:34px;height:48px;background:#fff;border:2px solid #cfd8dc;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;color:#0e141a}
 .mini.♥,.mini.♦{color:#d11}
 .tag{margin-left:auto;font-size:12px;opacity:.75}
+
+/* 結算面板 */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:40;padding:10px}
+.panel{
+  width:min(92vw,860px);max-height:80vh;overflow:auto;
+  background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+  border:1px solid rgba(255,255,255,.18);border-radius:16px;padding:16px
+}
+.panel h2{margin:0 0 10px;font-size:20px}
+.pList{list-style:none;margin:0;padding:0}
+.pItem{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:10px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.12);margin-bottom:8px}
+.pName{font-weight:800}
+.pExplain{opacity:.85;font-size:12px}
+.pRight{display:flex;gap:12px;align-items:center}
+.pDelta.plus{color:#7fe57f}
+.pDelta.minus{color:#ff9580}
+.pScore{font-weight:800}
+.rank{list-style:none;margin:8px 0 0;padding:0}
+.rank li{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.12);margin-bottom:8px}
 @media (max-width: 880px){
-  :root{--card-w:62px;--card-h:90px;--pile-w:44px;--pile-h:60px}
+  :root{--card-w:62px;--card-h:90px;--pile-w:42px;--pile-h:58px}
   #centerPanel{width:86vw}
   #logCenter{height:18vh}
 }
@@ -144,11 +157,35 @@ button[disabled]{opacity:.5;cursor:not-allowed}
 </div>
 
 <!-- 提示面板 -->
-<div id="hintOverlay">
-  <div id="hintPanel">
-    <h3>可出組合</h3>
+<div id="hintOverlay" class="overlay" style="z-index:30">
+  <div id="hintPanel" class="panel">
+    <h2>可出組合</h2>
     <div id="hintToolbar"></div>
     <div id="hintSections"></div>
+  </div>
+</div>
+
+<!-- 單局結算 -->
+<div id="roundOverlay" class="overlay">
+  <div class="panel">
+    <h2 id="roundTitle">本局結算</h2>
+    <ul id="roundList" class="pList"></ul>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:6px">
+      <button id="roundContinueBtn">繼續下一局</button>
+      <button class="btn-ghost" id="roundCloseBtn">關閉</button>
+    </div>
+  </div>
+</div>
+
+<!-- 系列戰結算 -->
+<div id="seriesOverlay" class="overlay">
+  <div class="panel">
+    <h2>系列戰結算（有人分數歸零）</h2>
+    <ul id="rankList" class="rank"></ul>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button id="restartSeriesBtn">重新開新系列（分數重置 10000）</button>
+      <button class="btn-ghost" id="closeSeriesBtn">關閉</button>
+    </div>
   </div>
 </div>
 
@@ -160,6 +197,7 @@ const suitOrder={'♣':0,'♦':1,'♥':2,'♠':3};
 const rIdx=r=>RANKS.indexOf(r);
 const compareCard=(a,b)=>(rIdx(a.rank)-rIdx(b.rank))||(suitOrder[a.suit]-suitOrder[b.suit]);
 let deck=[],players=[[],[],[],[]],turn=0,currentPlay=null,lastWinner=-1,firstTrick=true,names=[],scores=[10000,10000,10000,10000];
+let pendingDeal=false;
 
 const $ = s => document.querySelector(s);
 const logBox = $('#logCenter');
@@ -208,18 +246,13 @@ function render(){
       if(i===0){
         const d=document.createElement('div');
         d.className=`card ${c.suit}`; d.textContent=c.suit+c.rank; d.dataset.idx=idx;
-        // 嚴格「點擊/輕觸」才選牌（不使用拖曳改變選取）
-        d.addEventListener('click', (e)=>{ if(turn!==0) return; d.classList.toggle('selected'); }, {passive:true});
+        d.addEventListener('click', ()=>{ if(turn!==0) return; d.classList.toggle('selected'); }, {passive:true});
         let sx=0,sy=0;
-        d.addEventListener('touchstart', (e)=>{ if(turn!==0) return; const t=e.changedTouches[0]; sx=t.clientX; sy=t.clientY; }, {passive:true});
-        d.addEventListener('touchend', (e)=>{
+        d.addEventListener('touchstart', e=>{ if(turn!==0) return; const t=e.changedTouches[0]; sx=t.clientX; sy=t.clientY; }, {passive:true});
+        d.addEventListener('touchend', e=>{
           if(turn!==0) return;
           const t=e.changedTouches[0];
-          // 僅當手指幾乎沒移動才視為點擊
-          if(Math.hypot(t.clientX-sx, t.clientY-sy) < 10){
-            e.preventDefault();
-            d.classList.toggle('selected');
-          }
+          if(Math.hypot(t.clientX-sx, t.clientY-sy) < 10){ e.preventDefault(); d.classList.toggle('selected'); }
         }, {passive:false});
         area.appendChild(d);
       }
@@ -228,7 +261,6 @@ function render(){
   ['bottom','right','top','left'].forEach((pos,i)=>$('#cnt-'+pos).innerText=players[i].length);
   adjustTwoRows();
 }
-
 function updateTurnUI(){
   const mine = (turn===0);
   const canPass = mine && !!currentPlay;
@@ -257,7 +289,7 @@ function adjustTwoRows(){
 }
 window.addEventListener('resize', adjustTwoRows);
 
-/* 分析與比較（遵循你的規則） */
+/* 分析與比較 */
 function isConsec(s){ for(let i=1;i<s.length;i++) if(rIdx(s[i].rank)!==rIdx(s[i-1].rank)+1) return false; return true; }
 function analyze(cs){
   const n=cs.length, s=[...cs].sort(compareCard);
@@ -430,21 +462,72 @@ function hasStraightFlush(hand){
   return false;
 }
 function endRound(winnerIdx){
-  let totalGain=0;
+  // 計算各家懲罰與說明
+  const per=[]; let totalGain=0;
   for(let i=0;i<4;i++){
     if(i===winnerIdx) continue;
     const remain=players[i];
-    let pen = remain.length * 10;
-    if(remain.length>=8) pen*=2;
-    if(remain.some(c=>c.rank==='2')) pen*=2;
-    if(hasFourOfKind(remain)) pen*=2;
-    if(hasStraightFlush(remain)) pen*=2;
+    let base = remain.length*10;
+    let factor = 1;
+    const why=[];
+    why.push(`剩 ${remain.length} 張 ×10 = ${base}`);
+    if(remain.length>=8){ factor*=2; why.push('≥8 張 ×2'); }
+    if(remain.some(c=>c.rank==='2')){ factor*=2; why.push('含 2 ×2'); }
+    if(hasFourOfKind(remain)){ factor*=2; why.push('鐵支 ×2'); }
+    if(hasStraightFlush(remain)){ factor*=2; why.push('同花順 ×2'); }
+    const pen = base*factor;
     scores[i]-=pen; totalGain+=pen;
+    per.push({i,name:names[i],delta:-pen,explain:why.join('、'),after:scores[i]});
   }
   scores[winnerIdx]+=totalGain;
-  updateScoreUI();
-  setTimeout(deal,800);
+  per.push({i:winnerIdx,name:names[winnerIdx],delta:+totalGain,explain:`贏走其他玩家懲罰總和 +${totalGain}`,after:scores[winnerIdx]});
+  updateScoreUI(); saveScores();
+
+  // 顯示單局結算
+  showRound(per, winnerIdx);
+
+  // 系列戰是否結束
+  const zeroIdx = scores.findIndex(s=>s<=0);
+  if(zeroIdx!==-1){
+    showSeries();
+  }
 }
+
+function showRound(per, winnerIdx){
+  const list = $('#roundList'); list.innerHTML='';
+  $('#roundTitle').innerText = `本局結算：${names[winnerIdx]} 脫手`;
+  per.sort((a,b)=>a.i-b.i).forEach(row=>{
+    const li=document.createElement('li'); li.className='pItem';
+    const left=document.createElement('div');
+    left.innerHTML = `<div class="pName">${row.name}</div><div class="pExplain">${row.explain}</div>`;
+    const right=document.createElement('div'); right.className='pRight';
+    const delta=document.createElement('div'); delta.className='pDelta '+(row.delta>=0?'plus':'minus'); delta.textContent = (row.delta>=0?'+':'')+row.delta;
+    const after=document.createElement('div'); after.className='pScore'; after.textContent = row.after+' 分';
+    right.appendChild(delta); right.appendChild(after);
+    li.appendChild(left); li.appendChild(right); list.appendChild(li);
+  });
+  $('#roundOverlay').style.display='flex';
+  pendingDeal=true;
+}
+function showSeries(){
+  const rank = scores.map((s,i)=>({i, name:names[i], score:s})).sort((a,b)=>b.score-a.score);
+  const ul = $('#rankList'); ul.innerHTML='';
+  rank.forEach((r,idx)=>{
+    const li=document.createElement('li'); li.innerHTML = `<div>${idx+1}. ${r.name}</div><div>${r.score} 分</div>`; ul.appendChild(li);
+  });
+  $('#seriesOverlay').style.display='flex';
+}
+
+document.getElementById('roundContinueBtn').onclick=()=>{
+  $('#roundOverlay').style.display='none';
+  if(pendingDeal){ pendingDeal=false; deal(); }
+};
+document.getElementById('roundCloseBtn').onclick=()=>{ $('#roundOverlay').style.display='none'; };
+document.getElementById('restartSeriesBtn').onclick=()=>{
+  scores=[10000,10000,10000,10000]; saveScores(); updateScoreUI();
+  $('#seriesOverlay').style.display='none';
+};
+document.getElementById('closeSeriesBtn').onclick=()=>{ $('#seriesOverlay').style.display='none'; };
 
 /* ====== 提示（易讀版） ====== */
 const HINT_TYPES=['單張','對子','三條','順子','葫蘆','鐵支','同花順'];
@@ -497,6 +580,7 @@ function renderHint(){
   });
 }
 
+/* 綁定與啟動 */
 document.getElementById('playBtn').onclick=onPlay;
 document.getElementById('passBtn').onclick=onPass;
 document.getElementById('dealBtn').onclick=deal;
