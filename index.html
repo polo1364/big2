@@ -695,8 +695,15 @@ const BGM = (()=>{
   }
   return { toggle, boot };
 })();
-document.getElementById('sfxToggle').onclick=()=>{ document.getElementById('sfxToggle').textContent = `音效：${SFX.toggle()?'開':'關'}`; };
-document.getElementById('bgmToggle').onclick=()=>{ document.getElementById('bgmToggle').textContent = `音樂：${BGM.toggle()?'開':'關'}`; };
+document.getElementById('sfxToggle').onclick = ()=>{
+  const on = SFX.toggle();
+  document.getElementById('sfxToggle').textContent = `音效：${on?'開':'關'}`;
+  try{ localStorage.setItem('big2_sfx', on?'1':'0'); }catch(e){}
+};
+document.getElementById('bgmToggle').onclick = ()=>{
+  const on = BGM.toggle();
+  document.getElementById('bgmToggle').textContent = `音樂：${on?'開':'關'}`;
+}; };
 
 /* ====== 遊戲邏輯 ====== */
 const $=s=>document.querySelector(s);
@@ -756,8 +763,11 @@ function render(){
 }
 function updateTurnUI(){
   const canAct = (turn===0 && !autoMy);
-  $('#playBtn').disabled = !canAct; $('#passBtn').disabled = !canAct;
-  info(turn===0 ? (autoMy?`${names[0]}（代打中）`:`輪到你`) : `輪到 ${names[turn]}`);
+  const canPass = canAct && !!currentPlay; // 首攻不可 PASS → UI 直接禁用
+  document.getElementById('playBtn').disabled = !canAct;
+  document.getElementById('passBtn').disabled = !canPass;
+  info(turn===0 ? (autoMy ? `${names[0]}（代打中）` : (firstTrick ? '輪到你（首攻需含 ♣3；首攻不可 PASS）' : (currentPlay ? '輪到你（可跟牌或 PASS）' : '你拿到出牌權（不可 PASS）'))) : `輪到 ${names[turn]}`);
+}（代打中）`:`輪到你`) : `輪到 ${names[turn]}`);
 }
 
 /* 牌型分析 */
@@ -1073,10 +1083,13 @@ function deal(){
   try{
     const savedAuto = localStorage.getItem('big2_auto');
     if(savedAuto==='1'){ autoMy=true; document.getElementById('autoBtn').textContent='代打：開'; }
-    const bgmBtn = document.getElementById('bgmToggle');
     const savedBgm = localStorage.getItem('big2_bgm');
-    if(savedBgm==='1'){ bgmBtn.textContent='音樂：開'; }
+    if(savedBgm==='1'){ document.getElementById('bgmToggle').textContent='音樂：開'; }
+    const savedSfx = localStorage.getItem('big2_sfx');
+    if(savedSfx==='0'){ if (SFX.isEnabled && SFX.isEnabled()) { SFX.toggle(); } document.getElementById('sfxToggle').textContent='音效：關'; }
   }catch(e){}
+  // 啟動 BGM 隨機輪播（會讀偏好並等待互動解鎖）
+  if (typeof BGM !== 'undefined' && BGM.boot) { BGM.boot(); }
   deal();
 })();
 // === 全螢幕控制 ===
@@ -1087,12 +1100,16 @@ function deal(){
     return document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
   }
   function reqFS(){
-    const el = document.documentElement;
+  const el = document.documentElement;
+  try{
     (el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);
-  }
+  }catch(e){ /* ignore */ }
+}
   function exitFS(){
+  try{
     (document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);
-  }
+  }catch(e){ /* ignore */ }
+}
   function updateFSBtn(){
     if(fsBtn){
       fsBtn.textContent = inFS() ? '退出全螢幕' : '全螢幕';
