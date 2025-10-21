@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>大老二 — 介面重設＋計分模式（系列戰 v8）</title>
+<title>大老二 — 系列戰 v10（修復可遊玩＋錯誤顯示）</title>
 <style>
 :root{
   --card-w:56px;--card-h:80px;--gap:6px;--panel-w:min(92vw,980px);
@@ -113,6 +113,11 @@ h1{margin:10px 0 6px;font-weight:800;letter-spacing:.5px;font-size:18px}
 .combo-wrap{display:flex;flex-wrap:wrap;gap:6px}
 .combo{padding:6px 8px;background:#20303a;border:1px solid #3a5767;border-radius:8px;font-size:14px;cursor:pointer}
 .combo .tags{font-size:11px;opacity:.75;margin-left:6px}
+/* 錯誤提示層 */
+#errorOverlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.65);z-index:50}
+#errorCard{width:min(92vw,720px);background:#1a2633;border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:12px}
+#errorCard h3{margin:0 0 8px}
+#errorMsg{white-space:pre-wrap;font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;background:#0e1620;padding:10px;border-radius:8px;max-height:40vh;overflow:auto}
 @media (max-width: 820px){
   :root{--card-w:46px;--card-h:66px;--gap:4px;--pile-w:36px;--pile-h:50px}
   #centerPanel{width:82vw}
@@ -154,6 +159,7 @@ h1{margin:10px 0 6px;font-weight:800;letter-spacing:.5px;font-size:18px}
   </div>
 </div>
 
+<!-- 單局結算 -->
 <div id="roundOverlay" role="dialog" aria-modal="true">
   <div id="roundCard">
     <h2>本局結算</h2>
@@ -166,6 +172,7 @@ h1{margin:10px 0 6px;font-weight:800;letter-spacing:.5px;font-size:18px}
   </div>
 </div>
 
+<!-- 系列戰結算 -->
 <div id="seriesOverlay" role="dialog" aria-modal="true">
   <div id="seriesCard">
     <h2>系列戰結算</h2>
@@ -177,6 +184,7 @@ h1{margin:10px 0 6px;font-weight:800;letter-spacing:.5px;font-size:18px}
   </div>
 </div>
 
+<!-- 提示面板 -->
 <div id="hintOverlay">
   <div id="hintPanel">
     <h3>可出組合</h3>
@@ -185,7 +193,35 @@ h1{margin:10px 0 6px;font-weight:800;letter-spacing:.5px;font-size:18px}
   </div>
 </div>
 
+<!-- 錯誤提示 -->
+<div id="errorOverlay">
+  <div id="errorCard">
+    <h3>⚠️ 腳本發生錯誤</h3>
+    <div id="errorMsg"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+      <button id="errClose">關閉</button>
+      <button class="btn-ghost" id="errReload">重新整理</button>
+    </div>
+  </div>
+</div>
+
 <script>
+"use strict";
+/* ====== 全域錯誤攔截（避免無法遊戲） ====== */
+const errOv = document.getElementById('errorOverlay');
+const errMsg = document.getElementById('errorMsg');
+const showErr = (msg) => { errMsg.textContent = msg; errOv.style.display='flex'; };
+window.onerror = function(message, source, lineno, colno, error){
+  const m = (message||'')+'\\n'+(error&&error.stack?error.stack:('at '+source+':'+lineno+':'+colno));
+  showErr(m);
+};
+window.onunhandledrejection = function(e){
+  showErr('Unhandled Promise Rejection: '+ (e.reason && e.reason.stack ? e.reason.stack : e.reason));
+};
+document.getElementById('errClose').onclick=()=>errOv.style.display='none';
+document.getElementById('errReload').onclick=()=>location.reload();
+
+/* ====== 資料結構 ====== */
 const SUITS=['♣','♦','♥','♠'],RANKS=['3','4','5','6','7','8','9','10','J','Q','K','A','2'];
 const suitOrder={'♣':0,'♦':1,'♥':2,'♠':3};
 const rIdx=r=>RANKS.indexOf(r);
@@ -213,23 +249,29 @@ function logAppendText(t){
   line.appendChild(ww); line.appendChild(kk); logBox.appendChild(line); logBox.scrollTop = logBox.scrollHeight;
 }
 
-function randName(){const a="王李張陳林吳黃蔡楊許鄭何郭羅高胡蕭潘江鍾曾賴呂孫魏葉阮邱彭顏謝宋唐馮邵韓曹邢顧";
-const b="凱宇家豪志偉冠廷建宏志豪俊傑明哲冠霖俊宇承翰柏宇宗憲怡君欣怡雅婷雅雯佳蓉佩珊惠雯志玲美玲";
-return a[Math.floor(Math.random()*a.length)]+b[Math.floor(Math.random()*a.length)] + (Math.random()<.45?b[Math.floor(Math.random()*a.length)]:'');}
+/* 修正隨機中文名：2~3 字，避免索引錯誤 */
+function randName(){
+  const surn="王李張陳林吳黃蔡楊許鄭何郭羅高胡蕭潘江鍾曾賴呂孫魏葉阮邱彭顏謝宋唐馮邵韓曹邢顧";
+  const giv ="凱宇家豪志偉冠廷建宏志豪俊傑明哲冠霖俊宇承翰柏宇宗憲怡君欣怡雅婷雅雯佳蓉佩珊惠雯志玲美玲智恩梓萱昕妤宥蓁承恩承恩承翰予婕宜庭語彤語婕";
+  const pick=(pool)=>pool[Math.floor(Math.random()*pool.length)];
+  const two = pick(giv)+pick(giv);
+  const three = pick(giv)+pick(giv)+pick(giv);
+  return pick(surn) + (Math.random()<0.5?two:three);
+}
 
-function saveScores(){ localStorage.setItem('big2_scores', JSON.stringify(scores)); }
+function saveScores(){ try{ localStorage.setItem('big2_scores', JSON.stringify(scores)); }catch(e){} }
 function loadScores(){
   try{
     const s = JSON.parse(localStorage.getItem('big2_scores'));
     if(Array.isArray(s) && s.length===4) scores = s;
-    else scores = [10000,10000,10000,10000];
-  }catch{ scores=[10000,10000,10000,10000]; }
+  }catch(e){}
   updateScoreUI();
 }
 function updateScoreUI(){
   ['bottom','right','top','left'].forEach((pos,i)=>{ $('#score-'+pos).innerText = (scores[i]||0)+' 分'; });
 }
 
+/* ====== 牌組處理 ====== */
 function buildDeck(){ deck=[]; for(const s of SUITS) for(const r of RANKS) deck.push({suit:s,rank:r}); }
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 function findStart(){ for(let i=0;i<4;i++) if(players[i].some(c=>c.rank==='3'&&c.suit==='♣')) return i; return 0; }
@@ -243,26 +285,30 @@ function render(){
         const d=document.createElement('div');
         d.className=`card ${c.suit}`; d.textContent=c.suit+c.rank; d.dataset.idx=idx;
         area.appendChild(d);
-      }
+      } // 他家不顯示牌面
     });
   });
   ['bottom','right','top','left'].forEach((pos,i)=>$('#cnt-'+pos).innerText=players[i].length);
   adjustTwoRows();
 }
 
-$('#hand-bottom').addEventListener('pointerdown', e=>{
-  const card=e.target.closest('.card'); if(!card || turn!==0) return;
+function toggleCardSel(target){
+  const card=target.closest('.card'); if(!card || turn!==0) return;
   card.classList.toggle('selected');
-}, {passive:true});
+}
+$('#hand-bottom').addEventListener('pointerdown', e=>toggleCardSel(e.target), {passive:true});
+$('#hand-bottom').addEventListener('click', e=>toggleCardSel(e.target)); // 兼容
 
 function updateTurnUI(){
   const mine = (turn===0);
   const canPass = mine && !!currentPlay;
-  $('#playBtn').disabled = !mine;
-  $('#passBtn').disabled = !canPass;
+  const playEl=document.getElementById('playBtn'), passEl=document.getElementById('passBtn');
+  if(playEl) playEl.disabled = !mine;
+  if(passEl) passEl.disabled = !canPass;
   info(mine ? (firstTrick? '輪到你（首攻需含 ♣3；首攻不可 PASS）' : (currentPlay?'輪到你（可跟牌或 PASS）':'你拿到出牌權（不可 PASS）')) : `等待 ${names[turn]} 出牌…`);
 }
 
+/* ====== 兩排手牌（直式且溢出時） ====== */
 function isPortrait(){ return window.innerHeight > window.innerWidth; }
 function adjustTwoRows(){
   const hand = document.getElementById('hand-bottom');
@@ -271,8 +317,9 @@ function adjustTwoRows(){
   const n = players[0].length;
   if(n<=7) return;
   const avail = Math.floor(window.innerWidth * 0.94);
-  const gap = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--gap')) || 6;
-  const cardW = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--card-w')) || 56;
+  const rootStyles = getComputedStyle(document.documentElement);
+  const gap = parseInt(rootStyles.getPropertyValue('--gap')) || 6;
+  const cardW = parseInt(rootStyles.getPropertyValue('--card-w')) || 56;
   const oneRowWidth = n*cardW + (n-1)*gap;
   if(oneRowWidth <= avail) return;
   const cols = Math.ceil(n/2);
@@ -281,6 +328,23 @@ function adjustTwoRows(){
   hand.classList.add('two-rows');
 }
 window.addEventListener('resize', adjustTwoRows);
+
+/* ====== 遊戲流程 ====== */
+function deal(){
+  names=['你',randName(),randName(),randName()];
+  $('#name-right').innerText=names[1];
+  $('#name-top').innerText=names[2];
+  $('#name-left').innerText=names[3];
+  $('#pile').innerHTML=''; logBox.innerHTML=''; setLast('');
+  buildDeck(); shuffle(deck);
+  players=[[],[],[],[]];
+  for(let i=0;i<52;i++) players[i%4].push(deck[i]);
+  players.forEach(p=>p.sort(compareCard));
+  currentPlay=null; lastWinner=-1; firstTrick=true; turn=findStart();
+  render(); updateTurnUI();
+  info(`持有 ♣3 的玩家（${names[turn]}）先攻`);
+  if(turn!==0) setTimeout(aiPlay,500);
+}
 
 /* ====== 手型分析 ====== */
 function isConsec(s){ for(let i=1;i<s.length;i++) if(rIdx(s[i].rank)!==rIdx(s[i-1].rank)+1) return false; return true; }
@@ -335,28 +399,23 @@ function combos(hand){
   return res;
 }
 
-/* ====== AI 改良：會主動出對子/三條/五張手 ====== */
-function pickLeaderCombo(hand, all, enemyAlmostWin){
-  // 首攻時（或輪到重新出牌）選擇策略
+/* ====== AI（會出多張與五張） ====== */
+function pickLeaderCombo(all, enemyAlmostWin){
   const prefer = enemyAlmostWin
     ? ['同花順','鐵支','葫蘆','順子','三條','對子','單張']
-    : ['順子','葫蘆','三條','對子','單張']; // 避免一開始亂炸
+    : ['順子','葫蘆','三條','對子','單張'];
   for(const k of prefer){
     const cands = all.filter(c=>analyze(c).kind===k);
-    if(cands.length){
-      // 用「最低能量」的那個，保留更強的以後用
-      return cands[0];
-    }
+    if(cands.length) return cands[0];
   }
   return all[0]||null;
 }
 function pickResponseCombo(options, currentPlay){
   const needKind = analyze(currentPlay).kind;
   const same = options.filter(c=>analyze(c).kind===needKind);
-  if(same.length) return same[0]; // 最便宜過牌
+  if(same.length) return same[0];
   const bombs = options.filter(c=>['鐵支','同花順'].includes(analyze(c).kind));
   if(bombs.length) return bombs[0];
-  // 其他（理論上不會到這）
   return options[0]||null;
 }
 
@@ -368,7 +427,7 @@ function aiPlay(){
   let options=[];
   if(!currentPlay){
     options = firstTrick ? all.filter(c=>c.some(x=>x.rank==='3'&&x.suit==='♣')) : all;
-    const choice = pickLeaderCombo(hand, options, enemyAlmostWin);
+    const choice = pickLeaderCombo(options, enemyAlmostWin);
     if(choice) play(i,choice); else { info(`${names[i]} PASS`); logAppendText(`${names[i]} PASS`); next(); }
     return;
   }else{
@@ -377,9 +436,7 @@ function aiPlay(){
       const choice = pickResponseCombo(options, currentPlay);
       play(i,choice); return;
     }
-    // 無法跟
     if(isLeader){
-      // 不太可能出現，但保底：首攻出最弱非單張，否則單張
       const nonSingles = all.filter(c=>analyze(c).kind!=='單張');
       play(i, (nonSingles[0]||all[0]) );
     }else{
@@ -399,7 +456,11 @@ function renderPile(playerName,cards,kind){
   pile.appendChild(row);
 }
 function play(i,cards){
-  cards.forEach(c=>{ const idx=players[i].findIndex(p=>p.rank===c.rank&&p.suit===c.suit); if(idx>-1) players[i].splice(idx,1); });
+  // 安全移除手牌（避免索引錯誤）：逐張尋找最先匹配者
+  cards.forEach(sel=>{
+    const idx=players[i].findIndex(p=>p.rank===sel.rank&&p.suit===sel.suit);
+    if(idx>-1) players[i].splice(idx,1);
+  });
   render();
   const an=analyze(cards);
   currentPlay=cards; lastWinner=i; firstTrick=false;
@@ -411,14 +472,15 @@ function play(i,cards){
 }
 function next(){
   turn=(turn+1)%4;
-  if(players[turn].length===0) turn=(turn+1)%4;
+  if(players[turn].length===0) turn=(turn+1)%4; // 已脫手者略過
   if(turn===lastWinner){ currentPlay=null; setLast(`${names[turn]} 重新出牌`); $('#pile').innerHTML=''; }
   updateTurnUI();
-  if(turn!==0) setTimeout(aiPlay,700);
+  if(turn!==0) setTimeout(aiPlay,500);
 }
 function selected(){ return [...document.querySelectorAll('#hand-bottom .card.selected')].map(el=>players[0][parseInt(el.dataset.idx,10)]); }
 function onPlay(){
-  if(turn!==0) return;
+  const mine = (turn===0);
+  if(!mine) return;
   const cs=selected();
   if(!cs.length){ info('請先選牌'); return; }
   const an=analyze(cs);
@@ -428,12 +490,13 @@ function onPlay(){
   play(0,cs);
 }
 function onPass(){
-  if(turn!==0) return;
+  const mine = (turn===0);
+  if(!mine) return;
   if(!currentPlay){ info('首攻不可 PASS'); return; }
   info('你 PASS'); logAppendText('你 PASS'); next();
 }
 
-/* ====== 計分、單局結算、系列戰結算（含贏家吃分） ====== */
+/* ====== 計分（贏家吃分）與結算 ====== */
 function hasFourOfKind(hand){
   const rc={}; hand.forEach(c=>rc[c.rank]=(rc[c.rank]||0)+1);
   return Object.values(rc).some(v=>v===4);
@@ -450,7 +513,7 @@ function hasStraightFlush(hand){
   }
   return false;
 }
-let pendingNextAction = null; // 'deal' or 'series'
+let pendingNextAction = null;
 function endRound(winnerIdx){
   const detail=[];
   const perPlayer = [];
@@ -586,6 +649,7 @@ document.getElementById('dealBtn').onclick=deal;
 document.getElementById('hintBtn').onclick=openHints;
 document.getElementById('resetScoreBtn').onclick=()=>{ scores=[10000,10000,10000,10000]; saveScores(); updateScoreUI(); logAppendText('🔄 分數已重置為 10000'); };
 
+/* ====== 啟動 ====== */
 loadScores();
 deal();
 </script>
