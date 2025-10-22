@@ -687,36 +687,80 @@ const SFX = (()=>{
   };
 })();
 
-/* ====== BGM 系統 ====== */
+
+/* ====== BGM 系統（本地 BGM1~BGM5 + 線上備援） ====== */
 const BGM = (()=>{
-  const tracks = [
+  const local = ['BGM1.mp3','BGM2.mp3','BGM3.mp3','BGM4.mp3','BGM5.mp3'];
+  const remote = [
     'https://assets.manus.im/big2-bgm/track1.mp3',
     'https://assets.manus.im/big2-bgm/track2.mp3',
     'https://assets.manus.im/big2-bgm/track3.mp3',
     'https://assets.manus.im/big2-bgm/track4.mp3',
     'https://assets.manus.im/big2-bgm/track5.mp3'
   ];
-  let audio, enabled=false, idx=0;
+  const tracks = [...local, ...remote];
+  let audio, enabled=false, idx=0, armed=false;
   function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } }
   function init(){
     if(audio) return;
     audio = new Audio();
-    audio.volume = 0.3;
-    audio.addEventListener('ended', ()=>{ idx=(idx+1)%tracks.length; audio.src=tracks[idx]; audio.play().catch(()=>{}); });
+    audio.preload = 'auto';
+    audio.volume = 0.35;
+    audio.addEventListener('ended', next);
+    audio.addEventListener('error', next);
+  }
+  function setBtn(){
+    const b = document.getElementById('bgmToggle');
+    if(b) b.textContent = `音樂：${enabled?'開':'關'}`;
+  }
+  function next(){
+    if(!audio) return;
+    idx = (idx+1) % tracks.length;
+    if(enabled){
+      audio.src = tracks[idx];
+      audio.play().catch(()=>{});
+    }
+  }
+  function startFromCurrent(){
+    if(!audio) init();
+    audio.src = tracks[idx];
+    audio.play().catch(()=>{});
   }
   return {
     toggle(){
       init();
       enabled = !enabled;
-      if(enabled){ audio.src=tracks[idx]; audio.play().catch(()=>{}); }
-      else{ audio.pause(); }
+      if(enabled){
+        shuffle(tracks);
+        idx = 0;
+        startFromCurrent();
+      }else{
+        audio.pause();
+      }
       try{ localStorage.setItem('big2_bgm', enabled?'1':'0'); }catch(e){}
+      setBtn();
       return enabled;
+    },
+    armAuto(){
+      try{
+        const saved = localStorage.getItem('big2_bgm');
+        if(saved === '1'){
+          enabled = true;
+          setBtn();
+          if(!armed){
+            armed = true;
+            const once = ()=>{
+              document.removeEventListener('pointerdown', once);
+              startFromCurrent();
+            };
+            document.addEventListener('pointerdown', once, {once:true});
+          }
+        }
+      }catch(e){}
     },
     isEnabled(){ return enabled; }
   };
 })();
-
 document.getElementById('sfxToggle').onclick=()=>{ document.getElementById('sfxToggle').textContent = `音效：${SFX.toggle()?'開':'關'}`; };
 document.getElementById('bgmToggle').onclick=()=>{ document.getElementById('bgmToggle').textContent = `音樂：${BGM.toggle()?'開':'關'}`; };
 
@@ -1098,6 +1142,7 @@ function deal(){
     const bgmBtn = document.getElementById('bgmToggle');
     const savedBgm = localStorage.getItem('big2_bgm');
     if(savedBgm==='1'){ bgmBtn.textContent='音樂：開'; }
+    BGM.armAuto();
   }catch(e){}
   deal();
 })();
