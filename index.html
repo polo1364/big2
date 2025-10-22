@@ -552,37 +552,43 @@ button[disabled]{
 ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.3);border-radius:10px}
 ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.5)}
 
-/* === 將 音效/音樂/重置 移入戰況欄 + 動態預留高度，避免重疊 === */
-#centerPanel{ position:relative; padding-top:var(--panelPad,56px); margin-top:0; }
-#centerTools{ position:absolute; top:8px; right:10px; display:flex; gap:8px; flex-wrap:wrap; z-index:5; }
-.btn-ghost.btn-small{ white-space:nowrap; }
-
-/* 行動裝置：把戰況欄再往上貼一點，縮小上方空白 */
-@media (max-width: 768px){
-  #centerPanel{ transform: translateY(-10px); }
+/* === 工具列分左右（重置在左、音效/音樂在右） === */
+#centerPanel{ position:relative; padding-top:var(--panelPad,56px); }
+#centerTools{
+  position:absolute; top:8px; left:10px; right:10px;
+  display:flex; justify-content:space-between; align-items:flex-start; gap:8px; flex-wrap:wrap;
+  z-index:6;
+}
+#centerTools .ct-side{ display:flex; gap:8px; flex-wrap:wrap; }
+#centerTools .ct-side .btn-ghost.btn-small{ white-space:nowrap; }
+@media (max-width:768px){
+  #centerPanel{ transform: translateY(-20px); }
 }
 
+</style>
+<style id="big2_overlay_fix">
+/* === Big2 Overlay/Visibility Fix (integrated) === */
+#centerPanel{ position:relative; padding-top:64px; z-index:20; }
+#centerTools{ position:absolute; top:10px; right:12px; display:flex; gap:8px; flex-wrap:wrap; z-index:25; }
+.btn-ghost.btn-small{ white-space:nowrap; }
+#info,#last{ margin-top:6px; }
 
-/* === 桌面修正：固定底部手牌 Dock，確保可見 === */
+/* 動作列一定在最上層，避免被任何膠囊或手牌遮住 */
+.actionRow{ position:relative; z-index:50; }
+
+/* 一律顯示底部的 名字/分數/張數 膠囊，且不擋點擊 */
+#p-bottom .name, #p-bottom .score, #p-bottom .count{
+  display:inline-flex !important;
+  pointer-events:none;
+}
+
+/* 桌面優化：Dock 手牌、為 Dock 預留空間、戰況面板可滾動 */
 @media (min-width:1024px){
-  .table{ padding-bottom: 208px !important; }   /* 為底部 Dock 預留空間 */
-  #p-bottom{
-    position: fixed; left: 0; right: 0; bottom: 10px;
-    z-index: 40; pointer-events: none;
-    display: flex; flex-direction: column; align-items: center;
-  }
-  #p-bottom .hand{
-    pointer-events: auto;
-    max-width: min(1280px, 96vw);
-    overflow-x: auto; overflow-y: hidden;
-  }
-  /* 名字 / 分數 / 張數 保持可見但不擋點擊 */
-  #p-bottom .name, #p-bottom .score, #p-bottom .count{
-    pointer-events: none;
-    margin: 0 6px 6px;
-  }
-  /* 動作列一定在最上層，避免蓋到 Dock */
-  .actionRow{ position: relative; z-index: 50; }
+  :root{ --card-w:84px; --card-h:124px; }
+  .table{ padding-bottom: 200px; } /* 預留空間，避免底部被擋 */
+  #centerPanel{ max-height:64vh; overflow:auto; }
+  #p-bottom{ position:fixed; left:0; right:0; bottom:10px; z-index:40; pointer-events:none; display:flex; flex-direction:column; align-items:center; }
+  #p-bottom .hand{ pointer-events:auto; max-width:min(1280px,96vw); overflow-x:auto; overflow-y:hidden; margin-top:4px; }
 }
 
 </style>
@@ -598,6 +604,8 @@ button[disabled]{
     <div id="centerPanel">
       <div id="fx"></div>
       <div id="centerTools">
+    <div id="ctLeft" class="ct-side"></div>
+    <div id="ctRight" class="ct-side"></div>
         <button id="resetScoreBtn" class="btn-ghost btn-small">重置分數(10000)</button>
       </div>
       <div id="info">載入中…</div>
@@ -1112,44 +1120,54 @@ function deal(){
 </script>
 
 <script>
-(function fixPanelTools(){
-  const panel = document.getElementById('centerPanel');
-  const tray  = document.getElementById('centerTools');
-  if(!panel || !tray) return;
-
-  ['resetScoreBtn','sfxToggle','bgmToggle'].forEach(id=>{
-    const el = document.getElementById(id);
-    if(el && el.parentNode !== tray){ tray.appendChild(el); }
-  });
-
-  function reserve(){
-    // 根據實際高度（可能會換行）動態預留 padding-top，杜絕重疊
-    const h = tray.offsetHeight || 0;
-    panel.style.setProperty('--panelPad', (h + 12) + 'px');
+/* big2_wheel_scroll_helper */
+(function(){
+  const hand = document.getElementById('hand-bottom');
+  if(!hand) return;
+  function wheelToScroll(e){
+    if(window.matchMedia('(min-width:1024px)').matches && Math.abs(e.deltaY)>0){
+      hand.scrollLeft += e.deltaY;
+      e.preventDefault();
+    }
   }
-  const ro = new (window.ResizeObserver || function(cb){ this.observe=cb; })((entries)=>reserve());
-  try{ ro.observe(tray); }catch(e){}
-
-  window.addEventListener('resize', reserve);
-  window.addEventListener('orientationchange', reserve);
-  // 初次排版後再計算一次
-  setTimeout(reserve, 0);
-  setTimeout(reserve, 250);
+  hand.addEventListener('wheel', wheelToScroll, {passive:false});
 })();
 </script>
 
 
 <script>
-(function handWheelScroll(){
-  var hand = document.getElementById('hand-bottom');
-  if(!hand || hand.dataset.wheelbound=='1') return;
-  hand.dataset.wheelbound = '1';
-  hand.addEventListener('wheel', function(e){
-    if(window.matchMedia('(min-width:1024px)').matches && Math.abs(e.deltaY) > 0){
-      hand.scrollLeft += e.deltaY;
-      e.preventDefault();
-    }
-  }, {passive:false});
+(function arrangeToolsLR(){
+  const panel = document.getElementById('centerPanel');
+  const tray  = document.getElementById('centerTools');
+  const left  = document.getElementById('ctLeft');
+  const right = document.getElementById('ctRight');
+  if(!panel || !tray || !left || !right) return;
+
+  function byId(id){ return document.getElementById(id); }
+  const reset = byId('resetScoreBtn');
+  const sfx   = byId('sfxToggle');
+  const bgm   = byId('bgmToggle');
+
+  if(reset && reset.parentNode !== left) left.appendChild(reset);
+  if(sfx   && sfx.parentNode   !== right) right.appendChild(sfx);
+  if(bgm   && bgm.parentNode   !== right) right.appendChild(bgm);
+
+  function reserve(){
+    const h = tray.getBoundingClientRect().height || 0;
+    panel.style.setProperty('--panelPad', (Math.round(h) + 12) + 'px');
+  }
+  if (window.ResizeObserver){
+    const ro = new ResizeObserver(()=>reserve());
+    ro.observe(tray);
+  }
+  if (window.MutationObserver){
+    const mo = new MutationObserver(()=>reserve());
+    mo.observe(tray, {childList:true, subtree:true, attributes:true});
+  }
+  window.addEventListener('resize', reserve);
+  window.addEventListener('orientationchange', reserve);
+  const once = ()=>{ reserve(); setTimeout(reserve, 120); setTimeout(reserve, 360); };
+  if (document.readyState === 'complete') once(); else window.addEventListener('load', once);
 })();
 </script>
 
