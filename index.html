@@ -551,30 +551,21 @@ button[disabled]{
 ::-webkit-scrollbar-track{background:rgba(0,0,0,0.2);border-radius:10px}
 ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.3);border-radius:10px}
 ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.5)}
-</style>
-<style id="big2_overlay_fix">
-/* === Big2 Overlay/Visibility Fix (integrated) === */
-#centerPanel{ position:relative; padding-top:64px; z-index:20; }
-#centerTools{ position:absolute; top:10px; right:12px; display:flex; gap:8px; flex-wrap:wrap; z-index:25; }
+
+/* === 工具列不壓文字＆可換行 === */
+#centerPanel{ padding-top:56px; }
+#centerTools{ top:8px; right:12px; gap:8px; flex-wrap:wrap; }
 .btn-ghost.btn-small{ white-space:nowrap; }
 #info,#last{ margin-top:6px; }
 
-/* 動作列一定在最上層，避免被任何膠囊或手牌遮住 */
-.actionRow{ position:relative; z-index:50; }
 
-/* 一律顯示底部的 名字/分數/張數 膠囊，且不擋點擊 */
-#p-bottom .name, #p-bottom .score, #p-bottom .count{
-  display:inline-flex !important;
-  pointer-events:none;
-}
+/* === UI 調整：將 音效/音樂 移入戰況欄 + 縮小上方空白 === */
+#centerPanel{ position:relative; padding-top:clamp(40px,6vh,56px); margin-top:8px; }
+#centerTools{ position:absolute; top:8px; right:10px; display:flex; gap:8px; flex-wrap:wrap; z-index:5; }
+.btn-ghost.btn-small{ white-space:nowrap; }
 
-/* 桌面優化：Dock 手牌、為 Dock 預留空間、戰況面板可滾動 */
-@media (min-width:1024px){
-  :root{ --card-w:84px; --card-h:124px; }
-  .table{ padding-bottom: 200px; } /* 預留空間，避免底部被擋 */
-  #centerPanel{ max-height:64vh; overflow:auto; }
-  #p-bottom{ position:fixed; left:0; right:0; bottom:10px; z-index:40; pointer-events:none; display:flex; flex-direction:column; align-items:center; }
-  #p-bottom .hand{ pointer-events:auto; max-width:min(1280px,96vw); overflow-x:auto; overflow-y:hidden; margin-top:4px; }
+@media (max-width: 768px){
+  #centerPanel{ padding-top:44px; margin-top:4px; }
 }
 
 </style>
@@ -648,6 +639,13 @@ button[disabled]{
 
 <script>
 "use strict";
+
+/* === 唯一名字工具 === */
+const FAMILY="王李張陳林吳黃蔡楊許鄭何郭羅高胡蕭潘江鍾曾賴呂孫魏葉阮邱彭顏謝宋唐馮邵韓曹邢顧";
+const GIVEN ="凱宇家豪志偉冠廷建宏志豪俊傑明哲冠霖俊宇承翰柏宇宗憲怡君欣怡雅婷雅雯佳蓉佩珊惠雯志玲美玲";
+function makeName(){ const fam=FAMILY[Math.floor(Math.random()*FAMILY.length)]; const g1=GIVEN[Math.floor(Math.random()*GIVEN.length)]; const g2=(Math.random()<0.45)?GIVEN[Math.floor(Math.random()*GIVEN.length)]:""; return fam+g1+g2; }
+function genUniqueNames(n, avoid=new Set()){ const used=new Set(avoid); const out=[]; let guard=0; while(out.length<n && guard<5000){ const name=makeName(); if(!used.has(name)){ used.add(name); out.push(name); } guard++; } return out; }
+
 /* ====== 音效系統（WebAudio） ====== */
 const SFX = (()=>{
   let enabled = true;
@@ -687,80 +685,36 @@ const SFX = (()=>{
   };
 })();
 
-
-/* ====== BGM 系統（本地 BGM1~BGM5 + 線上備援） ====== */
+/* ====== BGM 系統 ====== */
 const BGM = (()=>{
-  const local = ['BGM1.mp3','BGM2.mp3','BGM3.mp3','BGM4.mp3','BGM5.mp3'];
-  const remote = [
+  const tracks = [
     'https://assets.manus.im/big2-bgm/track1.mp3',
     'https://assets.manus.im/big2-bgm/track2.mp3',
     'https://assets.manus.im/big2-bgm/track3.mp3',
     'https://assets.manus.im/big2-bgm/track4.mp3',
     'https://assets.manus.im/big2-bgm/track5.mp3'
   ];
-  const tracks = [...local, ...remote];
-  let audio, enabled=false, idx=0, armed=false;
+  let audio, enabled=false, idx=0;
   function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } }
   function init(){
     if(audio) return;
     audio = new Audio();
-    audio.preload = 'auto';
-    audio.volume = 0.35;
-    audio.addEventListener('ended', next);
-    audio.addEventListener('error', next);
-  }
-  function setBtn(){
-    const b = document.getElementById('bgmToggle');
-    if(b) b.textContent = `音樂：${enabled?'開':'關'}`;
-  }
-  function next(){
-    if(!audio) return;
-    idx = (idx+1) % tracks.length;
-    if(enabled){
-      audio.src = tracks[idx];
-      audio.play().catch(()=>{});
-    }
-  }
-  function startFromCurrent(){
-    if(!audio) init();
-    audio.src = tracks[idx];
-    audio.play().catch(()=>{});
+    audio.volume = 0.3;
+    audio.addEventListener('ended', ()=>{ idx=(idx+1)%tracks.length; audio.src=tracks[idx]; audio.play().catch(()=>{}); });
   }
   return {
     toggle(){
       init();
       enabled = !enabled;
-      if(enabled){
-        shuffle(tracks);
-        idx = 0;
-        startFromCurrent();
-      }else{
-        audio.pause();
-      }
+      if(enabled){ audio.src=tracks[idx]; audio.play().catch(()=>{}); }
+      else{ audio.pause(); }
       try{ localStorage.setItem('big2_bgm', enabled?'1':'0'); }catch(e){}
-      setBtn();
       return enabled;
-    },
-    armAuto(){
-      try{
-        const saved = localStorage.getItem('big2_bgm');
-        if(saved === '1'){
-          enabled = true;
-          setBtn();
-          if(!armed){
-            armed = true;
-            const once = ()=>{
-              document.removeEventListener('pointerdown', once);
-              startFromCurrent();
-            };
-            document.addEventListener('pointerdown', once, {once:true});
-          }
-        }
-      }catch(e){}
     },
     isEnabled(){ return enabled; }
   };
 })();
+
 document.getElementById('sfxToggle').onclick=()=>{ document.getElementById('sfxToggle').textContent = `音效：${SFX.toggle()?'開':'關'}`; };
 document.getElementById('bgmToggle').onclick=()=>{ document.getElementById('bgmToggle').textContent = `音樂：${BGM.toggle()?'開':'關'}`; };
 
@@ -1122,6 +1076,21 @@ document.getElementById('autoBtn').onclick=()=>{
 
 /* 開局 */
 function deal(){
+
+/* 確保每局名字唯一（且不會叫「你」） */
+(function(){
+  try{
+    const others = genUniqueNames(3, new Set(["你"]));
+    if (typeof names === "undefined") window.names = ["你", ...others];
+    else names = ["你", ...others];
+    const map = ["right","top","left"];
+    map.forEach((pos,idx)=>{
+      const el=document.getElementById("name-"+pos);
+      if(el) el.innerText = names[idx+1];
+    });
+  }catch(e){}
+})();
+
   names=['你',randName(),randName(),randName()];
   document.getElementById('name-right').innerText=names[1]; document.getElementById('name-top').innerText=names[2]; document.getElementById('name-left').innerText=names[3];
   document.getElementById('pile').innerHTML=''; logBox.innerHTML=''; setLast(''); clearFX();
@@ -1142,24 +1111,21 @@ function deal(){
     const bgmBtn = document.getElementById('bgmToggle');
     const savedBgm = localStorage.getItem('big2_bgm');
     if(savedBgm==='1'){ bgmBtn.textContent='音樂：開'; }
-    BGM.armAuto();
   }catch(e){}
   deal();
 })();
 </script>
 
 <script>
-/* big2_wheel_scroll_helper */
-(function(){
-  const hand = document.getElementById('hand-bottom');
-  if(!hand) return;
-  function wheelToScroll(e){
-    if(window.matchMedia('(min-width:1024px)').matches && Math.abs(e.deltaY)>0){
-      hand.scrollLeft += e.deltaY;
-      e.preventDefault();
+(function moveAudioButtonsIntoPanel(){
+  const ct = document.getElementById('centerTools');
+  if(!ct) return;
+  ['resetScoreBtn','sfxToggle','bgmToggle'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el && !ct.contains(el)){
+      try{ ct.appendChild(el); }catch(e){}
     }
-  }
-  hand.addEventListener('wheel', wheelToScroll, {passive:false});
+  });
 })();
 </script>
 
