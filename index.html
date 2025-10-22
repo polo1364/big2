@@ -552,45 +552,55 @@ button[disabled]{
 ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.3);border-radius:10px}
 ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.5)}
 
-/* === 工具列不壓文字＆可換行 === */
-#centerPanel{ padding-top:56px; }
-#centerTools{ top:8px; right:12px; gap:8px; flex-wrap:wrap; }
-.btn-ghost.btn-small{ white-space:nowrap; }
-#info,#last{ margin-top:6px; }
-
-
-/* === Desktop bottom hand dock (always visible) === */
-@media (min-width:1024px){
-  .table{ padding-bottom: 208px !important; }
-  #p-bottom{
-    position: fixed; left: 0; right: 0; bottom: 10px;
-    z-index: 40; pointer-events: none;
-    display: flex; flex-direction: column; align-items: center;
-  }
-  #p-bottom .hand{
-    pointer-events: auto;
-    max-width: min(1280px, 96vw);
-    overflow-x: auto; overflow-y: hidden;
-  }
-  #p-bottom .name, #p-bottom .score, #p-bottom .count{ pointer-events: none; margin: 0 6px 6px; }
-  .actionRow{ position: relative; z-index: 50; }
-}
-
-/* === Center tools split: reset left, sfx/bgm right === */
+/* === 工具列可點擊＋左右分區＋預留高度 === */
 #centerPanel{ position:relative; padding-top:var(--panelPad,56px); }
 #centerTools{
   position:absolute; top:8px; left:10px; right:10px;
   display:flex; justify-content:space-between; align-items:flex-start; gap:8px; flex-wrap:wrap;
-  z-index:6;
+  z-index:60; pointer-events:auto;   /* 確保可點 */
 }
-#centerTools .ct-side{ display:flex; gap:8px; flex-wrap:wrap; }
-#centerTools .btn-ghost.btn-small{ white-space:nowrap; }
+#centerTools .ct-side{ display:flex; gap:8px; flex-wrap:wrap; pointer-events:auto; }
+#centerTools .btn-ghost.btn-small{ white-space:nowrap; pointer-events:auto; }
 
-/* === Mobile: reduce top empty space === */
+/* 桌面底部手牌 Dock 預留，避免擠出畫面 */
+@media (min-width:1024px){
+  .table{ padding-bottom: 208px !important; }
+  #p-bottom{ position:fixed; left:0; right:0; bottom:10px; z-index:40; pointer-events:none;
+             display:flex; flex-direction:column; align-items:center; }
+  #p-bottom .hand{ pointer-events:auto; max-width:min(1280px,96vw); overflow-x:auto; overflow-y:hidden; }
+  .actionRow{ position:relative; z-index:50; }
+}
+/* 手機上方空白縮小一點 */
 @media (max-width:768px){
   .topbar{ padding: calc(4px + env(safe-area-inset-top,0px)) 12px 4px !important; min-height:0 !important; }
   .table{ padding-top: 4px !important; }
-  #centerPanel{ transform: translateY(-20px); }
+  #centerPanel{ transform: translateY(-18px); }
+}
+
+</style>
+<style id="big2_overlay_fix">
+/* === Big2 Overlay/Visibility Fix (integrated) === */
+#centerPanel{ position:relative; padding-top:64px; z-index:20; }
+#centerTools{ position:absolute; top:10px; right:12px; display:flex; gap:8px; flex-wrap:wrap; z-index:25; }
+.btn-ghost.btn-small{ white-space:nowrap; }
+#info,#last{ margin-top:6px; }
+
+/* 動作列一定在最上層，避免被任何膠囊或手牌遮住 */
+.actionRow{ position:relative; z-index:50; }
+
+/* 一律顯示底部的 名字/分數/張數 膠囊，且不擋點擊 */
+#p-bottom .name, #p-bottom .score, #p-bottom .count{
+  display:inline-flex !important;
+  pointer-events:none;
+}
+
+/* 桌面優化：Dock 手牌、為 Dock 預留空間、戰況面板可滾動 */
+@media (min-width:1024px){
+  :root{ --card-w:84px; --card-h:124px; }
+  .table{ padding-bottom: 200px; } /* 預留空間，避免底部被擋 */
+  #centerPanel{ max-height:64vh; overflow:auto; }
+  #p-bottom{ position:fixed; left:0; right:0; bottom:10px; z-index:40; pointer-events:none; display:flex; flex-direction:column; align-items:center; }
+  #p-bottom .hand{ pointer-events:auto; max-width:min(1280px,96vw); overflow-x:auto; overflow-y:hidden; margin-top:4px; }
 }
 
 </style>
@@ -606,7 +616,7 @@ button[disabled]{
     <div id="centerPanel">
       <div id="fx"></div>
       <div id="centerTools">
-    <div id="ctLeft" class="ct-side"></></div>
+    <div id="ctLeft" class="ct-side"></div>
     <div id="ctRight" class="ct-side"></div>
         <button id="resetScoreBtn" class="btn-ghost btn-small">重置分數(10000)</button>
       </div>
@@ -666,13 +676,6 @@ button[disabled]{
 
 <script>
 "use strict";
-
-/* === 唯一名字工具 === */
-const FAMILY="王李張陳林吳黃蔡楊許鄭何郭羅高胡蕭潘江鍾曾賴呂孫魏葉阮邱彭顏謝宋唐馮邵韓曹邢顧";
-const GIVEN ="凱宇家豪志偉冠廷建宏志豪俊傑明哲冠霖俊宇承翰柏宇宗憲怡君欣怡雅婷雅雯佳蓉佩珊惠雯志玲美玲";
-function makeName(){ const fam=FAMILY[Math.floor(Math.random()*FAMILY.length)]; const g1=GIVEN[Math.floor(Math.random()*GIVEN.length)]; const g2=(Math.random()<0.45)?GIVEN[Math.floor(Math.random()*GIVEN.length)]:""; return fam+g1+g2; }
-function genUniqueNames(n, avoid=new Set()){ const used=new Set(avoid); const out=[]; let guard=0; while(out.length<n && guard<5000){ const name=makeName(); if(!used.has(name)){ used.add(name); out.push(name); } guard++; } return out; }
-
 /* ====== 音效系統（WebAudio） ====== */
 const SFX = (()=>{
   let enabled = true;
@@ -713,19 +716,16 @@ const SFX = (()=>{
 })();
 
 
-/* ====== BGM 系統（本地 BGM1~BGM5 + 線上備援） ====== */
+/* ====== BGM（本地 BGM1~BGM5；預設開；第一次點擊啟播；可點切換） ====== */
 const BGM = (()=>{
-  const local = ['BGM1.mp3','BGM2.mp3','BGM3.mp3','BGM4.mp3','BGM5.mp3'];
-  const remote = [
-    'https://assets.manus.im/big2-bgm/track1.mp3',
-    'https://assets.manus.im/big2-bgm/track2.mp3',
-    'https://assets.manus.im/big2-bgm/track3.mp3',
-    'https://assets.manus.im/big2-bgm/track4.mp3',
-    'https://assets.manus.im/big2-bgm/track5.mp3'
-  ];
-  const tracks = [...local, ...remote];
-  let audio, enabled=false, idx=0, armed=false;
-  function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } }
+  const PLAYLIST = ['BGM1.mp3','BGM2.mp3','BGM3.mp3','BGM4.mp3','BGM5.mp3'];
+  let audio=null, idx=0, enabled=true, armed=false, btn=null, tried=0;
+
+  function saved(){
+    try{ const s=localStorage.getItem('big2_bgm'); return s===null?null:(s==='1'); }catch(e){ return null; }
+  }
+  function save(v){ try{ localStorage.setItem('big2_bgm', v?'1':'0'); }catch(e){} }
+
   function init(){
     if(audio) return;
     audio = new Audio();
@@ -734,53 +734,38 @@ const BGM = (()=>{
     audio.addEventListener('ended', next);
     audio.addEventListener('error', next);
   }
-  function setBtn(){
-    const b = document.getElementById('bgmToggle');
-    if(b) b.textContent = `音樂：${enabled?'開':'關'}`;
-  }
-  function next(){
-    if(!audio) return;
-    idx = (idx+1) % tracks.length;
-    if(enabled){
-      audio.src = tracks[idx];
-      audio.play().catch(()=>{});
-    }
-  }
-  function startFromCurrent(){
-    if(!audio) init();
-    audio.src = tracks[idx];
+  function label(){ if(btn) btn.textContent = '音樂：' + (enabled?'開':'關'); }
+  function start(){
+    if(!enabled) return;
+    init();
+    if(!PLAYLIST.length){ enabled=false; label(); return; }
+    audio.src = PLAYLIST[idx % PLAYLIST.length];
     audio.play().catch(()=>{});
   }
+  function next(){
+    idx = (idx+1) % PLAYLIST.length;
+    tried++;
+    if(tried >= PLAYLIST.length){ enabled=false; label(); return; }
+    if(enabled) start();
+  }
+  function arm(){
+    if(armed) return; armed=true;
+    const once = ()=>{ document.removeEventListener('pointerdown', once); start(); };
+    document.addEventListener('pointerdown', once, {once:true});
+  }
   return {
-    toggle(){
-      init();
-      enabled = !enabled;
-      if(enabled){
-        shuffle(tracks);
-        idx = 0;
-        startFromCurrent();
-      }else{
-        audio.pause();
-      }
-      try{ localStorage.setItem('big2_bgm', enabled?'1':'0'); }catch(e){}
-      setBtn();
-      return enabled;
-    },
-    armAuto(){
-      try{
-        const saved = localStorage.getItem('big2_bgm');
-        if(saved === '1'){
-          enabled = true;
-          setBtn();
-          if(!armed){
-            armed = true;
-            const once = ()=>{ document.removeEventListener('pointerdown', once); startFromCurrent(); };
-            document.addEventListener('pointerdown', once, {once:true});
-          }
-        }
-      }catch(e){}
-    },
-    isEnabled(){ return enabled; }
+    mount(button){
+      btn = button;
+      const s = saved();
+      enabled = (s===null)?true:s;
+      label();
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        enabled = !enabled; tried=0; save(enabled); label();
+        if(enabled) start(); else if(audio) audio.pause();
+      }, {passive:true});
+      arm();
+    }
   };
 })();
 document.getElementById('sfxToggle').onclick=()=>{ document.getElementById('sfxToggle').textContent = `音效：${SFX.toggle()?'開':'關'}`; };
@@ -1144,21 +1129,6 @@ document.getElementById('autoBtn').onclick=()=>{
 
 /* 開局 */
 function deal(){
-
-/* 確保每局名字唯一（且不會叫「你」） */
-(function(){
-  try{
-    const others = genUniqueNames(3, new Set(["你"]));
-    if (typeof names === "undefined") window.names = ["你", ...others];
-    else names = ["你", ...others];
-    const map = ["right","top","left"];
-    map.forEach((pos,idx)=>{
-      const el=document.getElementById("name-"+pos);
-      if(el) el.innerText = names[idx+1];
-    });
-  }catch(e){}
-})();
-
   names=['你',randName(),randName(),randName()];
   document.getElementById('name-right').innerText=names[1]; document.getElementById('name-top').innerText=names[2]; document.getElementById('name-left').innerText=names[3];
   document.getElementById('pile').innerHTML=''; logBox.innerHTML=''; setLast(''); clearFX();
@@ -1185,46 +1155,51 @@ function deal(){
 </script>
 
 <script>
-(function uiWiring_and_BGM(){
-  const panel = document.getElementById('centerPanel');
-  const tray  = document.getElementById('centerTools');
-  const left  = document.getElementById('ctLeft');
-  const right = document.getElementById('ctRight');
-  if(panel && tray && left && right){
-    const byId = id => document.getElementById(id);
-    let reset = byId('resetScoreBtn');
-    let sfx   = byId('sfxToggle');
-    let bgm   = byId('bgmToggle');
-
-    if(!bgm){
-      bgm = document.createElement('button');
-      bgm.id = 'bgmToggle';
-      bgm.className = 'btn-ghost btn-small';
-      bgm.textContent = '音樂：關';
+/* big2_wheel_scroll_helper */
+(function(){
+  const hand = document.getElementById('hand-bottom');
+  if(!hand) return;
+  function wheelToScroll(e){
+    if(window.matchMedia('(min-width:1024px)').matches && Math.abs(e.deltaY)>0){
+      hand.scrollLeft += e.deltaY;
+      e.preventDefault();
     }
-    if(reset && reset.parentNode !== left) left.appendChild(reset);
-    if(sfx   && sfx.parentNode   !== right) right.appendChild(sfx);
-    if(bgm   && bgm.parentNode   !== right) right.appendChild(bgm);
-
-    if(typeof BGM !== 'undefined'){
-      try{ if(localStorage.getItem('big2_bgm') === '1'){ bgm.textContent = '音樂：開'; } }catch(e){}
-      BGM.armAuto();
-      bgm.addEventListener('click', ()=>{
-        const on = BGM.toggle();
-        bgm.textContent = '音樂：' + (on?'開':'關');
-      });
-    }
-    function reserve(){
-      const h = tray.getBoundingClientRect().height || 0;
-      panel.style.setProperty('--panelPad', (Math.round(h)+12) + 'px');
-    }
-    if (window.ResizeObserver){ new ResizeObserver(reserve).observe(tray); }
-    if (window.MutationObserver){ new MutationObserver(reserve).observe(tray,{childList:true,subtree:true,attributes:true}); }
-    window.addEventListener('resize', reserve);
-    window.addEventListener('orientationchange', reserve);
-    const once = ()=>{ reserve(); setTimeout(reserve,120); setTimeout(reserve,360); };
-    if (document.readyState === 'complete') once(); else window.addEventListener('load', once);
   }
+  hand.addEventListener('wheel', wheelToScroll, {passive:false});
+})();
+</script>
+
+
+<script>
+(function wireBGMandToolbar(){
+  const tray  = document.getElementById('centerTools');
+  if(!tray) return;
+  let left = document.getElementById('ctLeft');
+  let right = document.getElementById('ctRight');
+  if(!left){ left=document.createElement('div'); left.id='ctLeft'; left.className='ct-side'; tray.prepend(left); }
+  if(!right){ right=document.createElement('div'); right.id='ctRight'; right.className='ct-side'; tray.appendChild(right); }
+
+  const byId=id=>document.getElementById(id);
+  const reset=byId('resetScoreBtn'), sfx=byId('sfxToggle');
+  let bgm=byId('bgmToggle');
+  if(!bgm){ bgm=document.createElement('button'); bgm.id='bgmToggle'; bgm.className='btn-ghost btn-small'; bgm.textContent='音樂：關'; }
+  if(reset && reset.parentNode!==left) left.appendChild(reset);
+  if(sfx && sfx.parentNode!==right) right.appendChild(sfx);
+  if(bgm && bgm.parentNode!==right) right.appendChild(bgm);
+
+  // dynamic padding
+  const panel=document.getElementById('centerPanel');
+  function reserve(){
+    const h=tray.getBoundingClientRect().height||0;
+    if(panel) panel.style.setProperty('--panelPad',(Math.round(h)+12)+'px');
+  }
+  if(window.ResizeObserver){ new ResizeObserver(()=>reserve()).observe(tray); }
+  if(window.MutationObserver){ new MutationObserver(()=>reserve()).observe(tray,{childList:true,subtree:true,attributes:true}); }
+  window.addEventListener('resize', reserve);
+  window.addEventListener('orientationchange', reserve);
+  setTimeout(reserve,0); setTimeout(reserve,150); setTimeout(reserve,400);
+
+  if(typeof BGM!=='undefined'){ BGM.mount(bgm); } // clickable & default-on
 })();
 </script>
 
