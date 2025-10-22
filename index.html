@@ -562,6 +562,31 @@ button[disabled]{
   #centerPanel{ transform: translateY(-10px); }
 }
 
+
+/* === 戰況工具鈕移入 + 重疊修正 + 手機上方空白縮小（無偵錯UI） === */
+#centerPanel{
+  position: relative;
+  padding-top: var(--panelPad, 56px) !important; /* 依實際工具列高度動態預留 */
+  box-sizing: border-box;
+  margin-top: 0;
+  z-index: 2;
+}
+#centerTools{
+  position: absolute; top: 8px; right: 10px;
+  display: flex; gap: 8px; flex-wrap: wrap;
+  z-index: 6;
+}
+.btn-ghost.btn-small{ white-space: nowrap; }
+
+@media (max-width: 768px){
+  .topbar{ 
+    padding: calc(4px + env(safe-area-inset-top, 0px)) 12px 4px !important;
+    min-height: 0 !important;
+  }
+  .table{ padding-top: 4px !important; }
+  #centerPanel{ transform: translateY(-24px) !important; } /* 再上貼，縮掉黑箭頭空白 */
+}
+
 </style>
 </head>
 <body>
@@ -1112,6 +1137,47 @@ function deal(){
   // 初次排版後再計算一次
   setTimeout(reserve, 0);
   setTimeout(reserve, 250);
+})();
+</script>
+
+
+<script>
+(function panelToolsFinal(){
+  const panel = document.getElementById('centerPanel');
+  const tray  = document.getElementById('centerTools');
+  if(!panel || !tray) return;
+
+  // 可能的按鈕 id；若你的檔名不同可再補
+  const ids = ['resetScoreBtn','sfxToggle','bgmToggle'];
+  ids.forEach(id=>{
+    const el = document.getElementById(id);
+    if(el && el.parentNode !== tray){ tray.appendChild(el); }
+  });
+
+  function reserve(){
+    // 以實際高度（可能會換行）動態預留 padding-top
+    const h = tray.getBoundingClientRect().height || 0;
+    panel.style.setProperty('--panelPad', (Math.round(h) + 12) + 'px');
+  }
+
+  // 監看高度與內容變化
+  if (window.ResizeObserver){
+    const ro = new ResizeObserver(()=>reserve());
+    ro.observe(tray);
+  }
+  if (window.MutationObserver){
+    const mo = new MutationObserver(()=>reserve());
+    mo.observe(tray, {childList:true, subtree:true, attributes:true});
+  }
+
+  // 裝置旋轉與視窗變更時重算
+  window.addEventListener('resize', reserve);
+  window.addEventListener('orientationchange', reserve);
+
+  // 初始與延遲各跑一次，避免字型/載入時機造成的閃動
+  const once = ()=>{ reserve(); setTimeout(reserve, 120); setTimeout(reserve, 360); };
+  if (document.readyState === 'complete') once();
+  else window.addEventListener('load', once);
 })();
 </script>
 
