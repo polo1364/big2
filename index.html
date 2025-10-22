@@ -546,12 +546,19 @@ button[disabled]{
   :root{ --panel-w:min(92vw,1280px); }
 }
 
-#centerTools{position:absolute;top:8px;right:10px;display:flex;gap:8px;align-items:center;z-index:5}
-:fullscreen #fsExitBtn{display:block}
+
+/* === Anti-overlap for top tool row === */
+#centerPanel{ padding-top:56px; }
+#centerTools{ top:8px; right:12px; gap:8px; flex-wrap:wrap; }
+.btn-ghost.btn-small{ white-space:nowrap; }
+#info,#last{ margin-top:6px; }
+/* === Immersive fullscreen fallback (iOS) === */
+html.immersive, html.immersive body{ height:100dvh; overflow:hidden; }
+html.immersive #stage{ height:var(--vh,100dvh); }
+
 </style>
 </head>
 <body>
-<button id="fsExitBtn" style="position:fixed;top:8px;left:8px;z-index:9999;display:none;padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.22);background:rgba(0,0,0,.45);color:#fff;font-weight:800">退出全螢幕</button>
 <button id="fsExitBtn">退出全螢幕</button>
 <div id="stage">
   <div class="topbar"><h1>大老二</h1></div>
@@ -561,10 +568,8 @@ button[disabled]{
     <div id="centerPanel">
       <div id="fx"></div>
       <div id="centerTools">
-  <button id="resetScoreBtn" class="btn-ghost btn-small">重置分數(10000)</button>
-  <button id="sfxToggle" class="btn-ghost btn-small">音效：開</button>
-  <button id="bgmToggle" class="btn-ghost btn-small">音樂：關</button>
-</div>
+        <button id="resetScoreBtn" class="btn-ghost btn-small">重置分數(10000)</button>
+      <button id="sfxToggle" class="btn-ghost btn-small">音效：開</button><button id="bgmToggle" class="btn-ghost btn-small">音樂：關</button></div>
       <div id="info">載入中…</div>
       <div id="last"></div>
       <div id="pile"></div>
@@ -575,7 +580,6 @@ button[disabled]{
         <button id="passBtn" disabled>PASS</button>
         <button class="btn-ghost" id="hintBtn">提示</button>
         <button class="btn-ghost" id="dealBtn">重發</button>
-        <button class="btn-ghost" id="fsBtn">全螢幕</button>
         <button class="btn-ghost" id="fsBtn">全螢幕</button>
       </div>
     </div>
@@ -1118,54 +1122,55 @@ function deal(){
 </script>
 
 <script>
-(function(){
-  const fsBtn=document.getElementById('fsBtn');
-  const fsExitBtn=document.getElementById('fsExitBtn');
-  if(!fsBtn){ return; }
-  function inFS(){ return document.fullscreenElement||document.webkitFullscreenElement||document.msFullscreenElement; }
-  function reqFS(){ const el=document.documentElement; try{ (el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el); }catch(e){} }
-  function exitFS(){ try{ (document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document); }catch(e){} }
-  function sync(){ if(fsBtn) fsBtn.textContent=inFS()?'退出全螢幕':'全螢幕'; if(fsExitBtn) fsExitBtn.style.display=inFS()?'block':'none'; }
-  fsBtn.addEventListener('click', ()=>{ inFS()?exitFS():reqFS(); });
+(function fullscreenBridge(){
+  const fsBtn = document.getElementById('fsBtn');
+  const fsExitBtn = document.getElementById('fsExitBtn');
+  let immersive = false;
+
+  const inFS = () => document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+
+  function sync(){
+    const on = inFS() || immersive;
+    if(fsBtn) fsBtn.textContent = on ? '退出全螢幕' : '全螢幕';
+    if(fsExitBtn) fsExitBtn.style.display = on ? 'block' : 'none';
+  }
+
+  function lockHeight(){
+    const set = () => {
+      const h = Math.round(window.visualViewport ? window.visualViewport.height : window.innerHeight);
+      document.documentElement.style.setProperty('--vh', h + 'px');
+    };
+    set();
+    window.visualViewport && visualViewport.addEventListener('resize', set);
+    window.addEventListener('resize', set);
+  }
+
+  function immersiveOn(){ immersive = true; document.documentElement.classList.add('immersive'); lockHeight(); sync(); }
+  function immersiveOff(){ immersive = false; document.documentElement.classList.remove('immersive'); sync(); }
+
+  function enterFS(){
+    const el = document.documentElement;
+    const req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+    if(!req){ immersiveOn(); return; }
+    try{
+      const p = req.call(el);
+      if(p && p.catch) p.catch(()=>immersiveOn());
+      setTimeout(()=>{ if(!inFS()) immersiveOn(); }, 400);
+    }catch(e){ immersiveOn(); }
+  }
+  function exitFS(){
+    const ex = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+    if(inFS() && ex){
+      try{ const p = ex.call(document); if(p && p.catch) p.catch(()=>immersiveOff()); }catch(e){ immersiveOff(); }
+    }else{
+      immersiveOff();
+    }
+  }
+
+  fsBtn && fsBtn.addEventListener('click', ()=> (inFS() || immersive) ? exitFS() : enterFS());
   fsExitBtn && fsExitBtn.addEventListener('click', exitFS);
-  document.addEventListener('fullscreenchange', sync);
-  document.addEventListener('webkitfullscreenchange', sync);
-  document.addEventListener('msfullscreenchange', sync);
+  ['fullscreenchange','webkitfullscreenchange','msfullscreenchange'].forEach(ev => document.addEventListener(ev, sync));
   sync();
-})();
-</script>
-
-
-<script>
-(function(){
-  if(typeof SFX==='undefined'){
-    window.SFX=(function(){let on=true;return{toggle:()=>{on=!on;return on;},set:v=>{on=!!v;},isEnabled:()=>on};})();
-  }
-  if(typeof BGM==='undefined'){
-    window.BGM=(function(){let on=false,a=null,last=-1,files=['BGM1.mp3','BGM2.mp3','BGM3.mp3','BGM4.mp3','BGM5.mp3'];
-      function ensure(){if(a)return;a=new Audio();a.preload='auto';a.loop=false;a.volume=.35;a.addEventListener('ended',()=>{on&&playNext()});a.addEventListener('error',()=>{on&&setTimeout(playNext,150)})}
-      function pick(){if(files.length===0)return null;if(files.length===1){last=0;return files[0]}let i;do{i=Math.floor(Math.random()*files.length)}while(i===last);last=i;return files[i]}
-      function playNext(){if(!on)return;ensure();const src=pick();if(!src)return;a.src=src;a.currentTime=0;a.play().catch(()=>{})}
-      return{toggle:()=>{on=!on;try{localStorage.setItem('big2_bgm',on?'1':'0')}catch(e){};on?playNext():a&&a.pause();return on},
-             boot:()=>{try{if(localStorage.getItem('big2_bgm')==='1'){on=true}}catch(e){};const once=()=>{on&&playNext();document.removeEventListener('pointerdown',once);document.removeEventListener('keydown',once)};document.addEventListener('pointerdown',once,{once:true});document.addEventListener('keydown',once,{once:true});}}})();
-  }
-})();
-</script>
-
-
-<script>
-(function(){
-  const sfxBtn=document.getElementById('sfxToggle');
-  const bgmBtn=document.getElementById('bgmToggle');
-  if(sfxBtn){
-    try{ const saved=localStorage.getItem('big2_sfx'); if(saved!==null){ if(typeof SFX.set==='function') SFX.set(saved==='1'); sfxBtn.textContent='音效：'+(saved==='1'?'開':'關'); } }catch(e){}
-    sfxBtn.addEventListener('click', ()=>{ const on=(typeof SFX.toggle==='function'? SFX.toggle():true); sfxBtn.textContent='音效：'+(on?'開':'關'); try{localStorage.setItem('big2_sfx',on?'1':'0')}catch(e){} });
-  }
-  if(bgmBtn){
-    try{ const saved=localStorage.getItem('big2_bgm'); if(saved==='1'){ bgmBtn.textContent='音樂：開'; } }catch(e){}
-    bgmBtn.addEventListener('click', ()=>{ const on=(typeof BGM.toggle==='function'? BGM.toggle():true); bgmBtn.textContent='音樂：'+(on?'開':'關'); });
-    if(typeof BGM.boot==='function'){ BGM.boot(); }
-  }
 })();
 </script>
 
