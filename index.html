@@ -552,20 +552,14 @@ button[disabled]{
 ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.3);border-radius:10px}
 ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.5)}
 
-/* === 工具列不壓文字＆可換行 === */
-#centerPanel{ padding-top:56px; }
-#centerTools{ top:8px; right:12px; gap:8px; flex-wrap:wrap; }
-.btn-ghost.btn-small{ white-space:nowrap; }
-#info,#last{ margin-top:6px; }
-
-
-/* === UI 調整：將 音效/音樂 移入戰況欄 + 縮小上方空白 === */
-#centerPanel{ position:relative; padding-top:clamp(40px,6vh,56px); margin-top:8px; }
+/* === 將 音效/音樂/重置 移入戰況欄 + 動態預留高度，避免重疊 === */
+#centerPanel{ position:relative; padding-top:var(--panelPad,56px); margin-top:0; }
 #centerTools{ position:absolute; top:8px; right:10px; display:flex; gap:8px; flex-wrap:wrap; z-index:5; }
 .btn-ghost.btn-small{ white-space:nowrap; }
 
+/* 行動裝置：把戰況欄再往上貼一點，縮小上方空白 */
 @media (max-width: 768px){
-  #centerPanel{ padding-top:44px; margin-top:4px; }
+  #centerPanel{ transform: translateY(-10px); }
 }
 
 </style>
@@ -639,13 +633,6 @@ button[disabled]{
 
 <script>
 "use strict";
-
-/* === 唯一名字工具 === */
-const FAMILY="王李張陳林吳黃蔡楊許鄭何郭羅高胡蕭潘江鍾曾賴呂孫魏葉阮邱彭顏謝宋唐馮邵韓曹邢顧";
-const GIVEN ="凱宇家豪志偉冠廷建宏志豪俊傑明哲冠霖俊宇承翰柏宇宗憲怡君欣怡雅婷雅雯佳蓉佩珊惠雯志玲美玲";
-function makeName(){ const fam=FAMILY[Math.floor(Math.random()*FAMILY.length)]; const g1=GIVEN[Math.floor(Math.random()*GIVEN.length)]; const g2=(Math.random()<0.45)?GIVEN[Math.floor(Math.random()*GIVEN.length)]:""; return fam+g1+g2; }
-function genUniqueNames(n, avoid=new Set()){ const used=new Set(avoid); const out=[]; let guard=0; while(out.length<n && guard<5000){ const name=makeName(); if(!used.has(name)){ used.add(name); out.push(name); } guard++; } return out; }
-
 /* ====== 音效系統（WebAudio） ====== */
 const SFX = (()=>{
   let enabled = true;
@@ -1076,21 +1063,6 @@ document.getElementById('autoBtn').onclick=()=>{
 
 /* 開局 */
 function deal(){
-
-/* 確保每局名字唯一（且不會叫「你」） */
-(function(){
-  try{
-    const others = genUniqueNames(3, new Set(["你"]));
-    if (typeof names === "undefined") window.names = ["你", ...others];
-    else names = ["你", ...others];
-    const map = ["right","top","left"];
-    map.forEach((pos,idx)=>{
-      const el=document.getElementById("name-"+pos);
-      if(el) el.innerText = names[idx+1];
-    });
-  }catch(e){}
-})();
-
   names=['你',randName(),randName(),randName()];
   document.getElementById('name-right').innerText=names[1]; document.getElementById('name-top').innerText=names[2]; document.getElementById('name-left').innerText=names[3];
   document.getElementById('pile').innerHTML=''; logBox.innerHTML=''; setLast(''); clearFX();
@@ -1117,15 +1089,29 @@ function deal(){
 </script>
 
 <script>
-(function moveAudioButtonsIntoPanel(){
-  const ct = document.getElementById('centerTools');
-  if(!ct) return;
+(function fixPanelTools(){
+  const panel = document.getElementById('centerPanel');
+  const tray  = document.getElementById('centerTools');
+  if(!panel || !tray) return;
+
   ['resetScoreBtn','sfxToggle','bgmToggle'].forEach(id=>{
     const el = document.getElementById(id);
-    if(el && !ct.contains(el)){
-      try{ ct.appendChild(el); }catch(e){}
-    }
+    if(el && el.parentNode !== tray){ tray.appendChild(el); }
   });
+
+  function reserve(){
+    // 根據實際高度（可能會換行）動態預留 padding-top，杜絕重疊
+    const h = tray.offsetHeight || 0;
+    panel.style.setProperty('--panelPad', (h + 12) + 'px');
+  }
+  const ro = new (window.ResizeObserver || function(cb){ this.observe=cb; })((entries)=>reserve());
+  try{ ro.observe(tray); }catch(e){}
+
+  window.addEventListener('resize', reserve);
+  window.addEventListener('orientationchange', reserve);
+  // 初次排版後再計算一次
+  setTimeout(reserve, 0);
+  setTimeout(reserve, 250);
 })();
 </script>
 
