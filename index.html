@@ -558,6 +558,28 @@ button[disabled]{
 .btn-ghost.btn-small{ white-space:nowrap; }
 #info,#last{ margin-top:6px; }
 
+
+/* === Desktop UX: Dock player's hand to bottom; keep center scrollable === */
+@media (min-width: 1024px){
+  :root{ --card-w:84px; --card-h:124px; }
+  .table{ padding-bottom: 168px; }
+  #p-bottom{
+    position: fixed; left: 0; right: 0; bottom: 10px;
+    display: flex; flex-direction: column; align-items: center; z-index: 40;
+    pointer-events: none;
+  }
+  #p-bottom .hand{
+    pointer-events: auto;
+    max-width: min(1280px, 96vw);
+    overflow-x: auto; overflow-y: hidden;
+    background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+    border: 1px solid rgba(255,255,255,.18);
+    padding: 10px 12px; border-radius: 14px; backdrop-filter: blur(6px);
+    box-shadow: 0 6px 18px rgba(0,0,0,.25);
+  }
+  #centerPanel{ max-height: 62vh; overflow: auto; }
+}
+
 </style>
 </head>
 <body>
@@ -1081,7 +1103,6 @@ function deal(){
   }catch(e){}
 })();
 
-  names=['你',randName(),randName(),randName()];
   document.getElementById('name-right').innerText=names[1]; document.getElementById('name-top').innerText=names[2]; document.getElementById('name-left').innerText=names[3];
   document.getElementById('pile').innerHTML=''; logBox.innerHTML=''; setLast(''); clearFX();
   buildDeck(); shuffle(deck);
@@ -1105,6 +1126,25 @@ function deal(){
   deal();
 })();
 </script>
+
+<script>
+(function desktopUX(){
+  const hand = document.getElementById('hand-bottom');
+  if(!hand) return;
+  function wheelToScroll(e){
+    if(window.matchMedia('(min-width:1024px)').matches && Math.abs(e.deltaY) > 0){
+      hand.scrollLeft += e.deltaY;
+      e.preventDefault();
+    }
+  }
+  hand.addEventListener('wheel', wheelToScroll, {passive:false});
+  const mq = window.matchMedia('(min-width:1024px)');
+  function syncRows(){ if(mq.matches){ hand.classList.remove('two-rows'); } }
+  (mq.addEventListener ? mq.addEventListener('change', syncRows) : mq.addListener(syncRows));
+  syncRows();
+})();
+</script>
+
 </body>
 </html>
 
