@@ -63,9 +63,26 @@ h1{
   border-bottom:1px solid rgba(255,255,255,0.15);
 }
 /* 右上角開關 */
-#sfxToggle,#bgmToggle{}
-#sfxToggle{}
-#bgmToggle{}
+#sfxToggle,#bgmToggle{
+  position:absolute;
+  right:16px;
+  z-index:6;
+  border:none;
+  border-radius:16px;
+  background:rgba(255,255,255,0.15);
+  backdrop-filter:blur(10px);
+  color:#fff;
+  padding:12px 16px;
+  min-height:48px;
+  cursor:pointer;
+  font-weight:800;
+  border:2px solid rgba(255,255,255,0.25);
+  transition:all 0.3s ease;
+  font-size:14px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.15);
+}
+#sfxToggle{top:16px}
+#bgmToggle{top:76px}
 #sfxToggle:hover,#bgmToggle:hover{
   background:rgba(255,255,255,0.25);
   transform:translateY(-2px);
@@ -534,49 +551,47 @@ button[disabled]{
 ::-webkit-scrollbar-track{background:rgba(0,0,0,0.2);border-radius:10px}
 ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.3);border-radius:10px}
 ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.5)}
-
-#fsExitBtn{position:fixed;top:8px;left:8px;z-index:60;display:none;
-  padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.22);
-  background:rgba(0,0,0,.45);color:#fff;font-weight:800}
-:fullscreen #fsExitBtn{display:block}
-@media (orientation:landscape){
-  :root{ --panel-w:min(96vw,1200px); }
-}
-@media (min-width:1100px){
-  :root{ --panel-w:min(92vw,1280px); }
-}
-
-
-/* === Overlay & Desktop UX fixes === */
-#centerPanel{ padding-top:64px; position:relative; }
-#centerTools{ position:absolute; top:10px; right:12px; display:flex; gap:8px; flex-wrap:wrap; z-index:5; }
+</style>
+<style id="big2_overlay_fix">
+/* === Big2 Overlay/Visibility Fix (integrated) === */
+#centerPanel{ position:relative; padding-top:64px; z-index:20; }
+#centerTools{ position:absolute; top:10px; right:12px; display:flex; gap:8px; flex-wrap:wrap; z-index:25; }
 .btn-ghost.btn-small{ white-space:nowrap; }
 #info,#last{ margin-top:6px; }
-.actionRow{ position:relative; z-index:41; }
 
+/* 動作列一定在最上層，避免被任何膠囊或手牌遮住 */
+.actionRow{ position:relative; z-index:50; }
+
+/* 一律顯示底部的 名字/分數/張數 膠囊，且不擋點擊 */
+#p-bottom .name, #p-bottom .score, #p-bottom .count{
+  display:inline-flex !important;
+  pointer-events:none;
+}
+
+/* 桌面優化：Dock 手牌、為 Dock 預留空間、戰況面板可滾動 */
 @media (min-width:1024px){
   :root{ --card-w:84px; --card-h:124px; }
-  .table{ padding-bottom:190px; }
+  .table{ padding-bottom: 200px; } /* 預留空間，避免底部被擋 */
   #centerPanel{ max-height:64vh; overflow:auto; }
-  #p-bottom{ position:fixed; left:0; right:0; bottom:10px; z-index:40; pointer-events:none; }
-  #p-bottom .hand{ pointer-events:auto; max-width:min(1280px,96vw); overflow-x:auto; overflow-y:hidden; }
-  #p-bottom .name, #p-bottom .score, #p-bottom .count{ display:none !important; }
+  #p-bottom{ position:fixed; left:0; right:0; bottom:10px; z-index:40; pointer-events:none; display:flex; flex-direction:column; align-items:center; }
+  #p-bottom .hand{ pointer-events:auto; max-width:min(1280px,96vw); overflow-x:auto; overflow-y:hidden; margin-top:4px; }
 }
 
 </style>
 </head>
 <body>
-<button id="fsExitBtn">退出全螢幕</button>
 <div id="stage">
   <div class="topbar"><h1>大老二</h1></div>
   <div class="table">
-<div id="p-top" class="player"><div class="name" id="name-top"></div><div class="score" id="score-top">10000 分</div><div class="hand" id="hand-top"></div><div class="count" id="cnt-top"></div></div>
+    <button id="sfxToggle">音效：開</button>
+    <button id="bgmToggle">音樂：關</button>
+    <div id="p-top" class="player"><div class="name" id="name-top"></div><div class="score" id="score-top">10000 分</div><div class="hand" id="hand-top"></div><div class="count" id="cnt-top"></div></div>
     <div id="p-left" class="player"><div class="name" id="name-left"></div><div class="score" id="score-left">10000 分</div><div class="hand" id="hand-left"></div><div class="count" id="cnt-left"></div></div>
     <div id="centerPanel">
       <div id="fx"></div>
       <div id="centerTools">
         <button id="resetScoreBtn" class="btn-ghost btn-small">重置分數(10000)</button>
-      <button id="sfxToggle" class="btn-ghost btn-small">音效：開</button><button id="bgmToggle" class="btn-ghost btn-small">音樂：關</button></div>
+      </div>
       <div id="info">載入中…</div>
       <div id="last"></div>
       <div id="pile"></div>
@@ -587,7 +602,6 @@ button[disabled]{
         <button id="passBtn" disabled>PASS</button>
         <button class="btn-ghost" id="hintBtn">提示</button>
         <button class="btn-ghost" id="dealBtn">重發</button>
-        <button class="btn-ghost" id="fsBtn">全螢幕</button>
       </div>
     </div>
     <div id="p-right" class="player"><div class="name" id="name-right"></div><div class="score" id="score-right">10000 分</div><div class="hand" id="hand-right"></div><div class="count" id="cnt-right"></div></div>
@@ -674,44 +688,35 @@ const SFX = (()=>{
 })();
 
 /* ====== BGM 系統 ====== */
-
 const BGM = (()=>{
-  let enabled = false;
-  const files = ['BGM1.mp3','BGM2.mp3','BGM3.mp3','BGM4.mp3','BGM5.mp3'];
-  let audio = null, last = -1;
-  const btn = document.getElementById('bgmToggle');
-  function ensure(){
+  const tracks = [
+    'https://assets.manus.im/big2-bgm/track1.mp3',
+    'https://assets.manus.im/big2-bgm/track2.mp3',
+    'https://assets.manus.im/big2-bgm/track3.mp3',
+    'https://assets.manus.im/big2-bgm/track4.mp3',
+    'https://assets.manus.im/big2-bgm/track5.mp3'
+  ];
+  let audio, enabled=false, idx=0;
+  function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } }
+  function init(){
     if(audio) return;
-    audio = new Audio(); audio.preload='auto'; audio.loop=false; audio.volume=0.35;
-    audio.addEventListener('ended', ()=>{ if(enabled) playNext(); });
-    audio.addEventListener('error', ()=>{ if(enabled) setTimeout(playNext, 150); });
+    audio = new Audio();
+    audio.volume = 0.3;
+    audio.addEventListener('ended', ()=>{ idx=(idx+1)%tracks.length; audio.src=tracks[idx]; audio.play().catch(()=>{}); });
   }
-  function pickNext(){
-    if(files.length===0) return null;
-    if(files.length===1){ last=0; return files[0]; }
-    let idx; do{ idx=Math.floor(Math.random()*files.length); }while(idx===last);
-    last=idx; return files[idx];
-  }
-  function playNext(){
-    if(!enabled) return;
-    ensure(); const src=pickNext(); if(!src) return;
-    audio.src=src; audio.currentTime=0;
-    audio.play().then(()=>{ btn.textContent='音樂：開'; }).catch(()=>{ btn.textContent='音樂：開（待播放）'; });
-  }
-  function toggle(){
-    enabled=!enabled; try{ localStorage.setItem('big2_bgm', enabled?'1':'0'); }catch(e){}
-    if(enabled) playNext(); else if(audio){ audio.pause(); }
-    btn.textContent = `音樂：${enabled?'開':'關'}`; return enabled;
-  }
-  function boot(){
-    try{ if(localStorage.getItem('big2_bgm')==='1'){ enabled=true; } }catch(e){}
-    btn.textContent = `音樂：${enabled?'開':'關'}`;
-    const once = ()=>{ if(enabled) playNext(); document.removeEventListener('pointerdown', once); document.removeEventListener('keydown', once); };
-    document.addEventListener('pointerdown', once, {once:true});
-    document.addEventListener('keydown', once, {once:true});
-  }
-  return { toggle, boot };
+  return {
+    toggle(){
+      init();
+      enabled = !enabled;
+      if(enabled){ audio.src=tracks[idx]; audio.play().catch(()=>{}); }
+      else{ audio.pause(); }
+      try{ localStorage.setItem('big2_bgm', enabled?'1':'0'); }catch(e){}
+      return enabled;
+    },
+    isEnabled(){ return enabled; }
+  };
 })();
+
 document.getElementById('sfxToggle').onclick=()=>{ document.getElementById('sfxToggle').textContent = `音效：${SFX.toggle()?'開':'關'}`; };
 document.getElementById('bgmToggle').onclick=()=>{ document.getElementById('bgmToggle').textContent = `音樂：${BGM.toggle()?'開':'關'}`; };
 
@@ -1096,44 +1101,15 @@ function deal(){
   }catch(e){}
   deal();
 })();
-// === 全螢幕控制 ===
-(function setupFullscreen(){
-  const fsBtn = document.getElementById('fsBtn');
-  const fsExitBtn = document.getElementById('fsExitBtn');
-  function inFS(){
-    return document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
-  }
-  function reqFS(){
-    const el = document.documentElement;
-    (el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);
-  }
-  function exitFS(){
-    (document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);
-  }
-  function updateFSBtn(){
-    if(fsBtn){
-      fsBtn.textContent = inFS() ? '退出全螢幕' : '全螢幕';
-    }
-    if(fsExitBtn){
-      fsExitBtn.style.display = inFS() ? 'block' : 'none';
-    }
-  }
-  fsBtn && fsBtn.addEventListener('click', ()=>{ inFS()? exitFS(): reqFS(); });
-  fsExitBtn && fsExitBtn.addEventListener('click', ()=> exitFS());
-  document.addEventListener('fullscreenchange', updateFSBtn);
-  document.addEventListener('webkitfullscreenchange', updateFSBtn);
-  document.addEventListener('msfullscreenchange', updateFSBtn);
-  updateFSBtn();
-})();
-
 </script>
 
 <script>
-(function desktopWheelScroll(){
+/* big2_wheel_scroll_helper */
+(function(){
   const hand = document.getElementById('hand-bottom');
   if(!hand) return;
   function wheelToScroll(e){
-    if(window.matchMedia('(min-width:1024px)').matches && Math.abs(e.deltaY) > 0){
+    if(window.matchMedia('(min-width:1024px)').matches && Math.abs(e.deltaY)>0){
       hand.scrollLeft += e.deltaY;
       e.preventDefault();
     }
