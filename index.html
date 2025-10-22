@@ -63,9 +63,26 @@ h1{
   border-bottom:1px solid rgba(255,255,255,0.15);
 }
 /* 右上角開關 */
-#sfxToggle,#bgmToggle{}
-#sfxToggle{}
-#bgmToggle{}
+#sfxToggle,#bgmToggle{
+  position:absolute;
+  right:16px;
+  z-index:6;
+  border:none;
+  border-radius:16px;
+  background:rgba(255,255,255,0.15);
+  backdrop-filter:blur(10px);
+  color:#fff;
+  padding:12px 16px;
+  min-height:48px;
+  cursor:pointer;
+  font-weight:800;
+  border:2px solid rgba(255,255,255,0.25);
+  transition:all 0.3s ease;
+  font-size:14px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.15);
+}
+#sfxToggle{top:16px}
+#bgmToggle{top:76px}
 #sfxToggle:hover,#bgmToggle:hover{
   background:rgba(255,255,255,0.25);
   transform:translateY(-2px);
@@ -535,41 +552,27 @@ button[disabled]{
 ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.3);border-radius:10px}
 ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.5)}
 
-#fsExitBtn{position:fixed;top:8px;left:8px;z-index:60;display:none;
-  padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.22);
-  background:rgba(0,0,0,.45);color:#fff;font-weight:800}
-:fullscreen #fsExitBtn{display:block}
-@media (orientation:landscape){
-  :root{ --panel-w:min(96vw,1200px); }
-}
-@media (min-width:1100px){
-  :root{ --panel-w:min(92vw,1280px); }
-}
-
-
-/* === Anti-overlap for top tool row === */
+/* === 工具列不壓文字＆可換行 === */
 #centerPanel{ padding-top:56px; }
 #centerTools{ top:8px; right:12px; gap:8px; flex-wrap:wrap; }
 .btn-ghost.btn-small{ white-space:nowrap; }
 #info,#last{ margin-top:6px; }
-/* === Immersive fullscreen fallback (iOS) === */
-html.immersive, html.immersive body{ height:100dvh; overflow:hidden; }
-html.immersive #stage{ height:var(--vh,100dvh); }
 
 </style>
 </head>
 <body>
-<button id="fsExitBtn">退出全螢幕</button>
 <div id="stage">
   <div class="topbar"><h1>大老二</h1></div>
   <div class="table">
-<div id="p-top" class="player"><div class="name" id="name-top"></div><div class="score" id="score-top">10000 分</div><div class="hand" id="hand-top"></div><div class="count" id="cnt-top"></div></div>
+    <button id="sfxToggle">音效：開</button>
+    <button id="bgmToggle">音樂：關</button>
+    <div id="p-top" class="player"><div class="name" id="name-top"></div><div class="score" id="score-top">10000 分</div><div class="hand" id="hand-top"></div><div class="count" id="cnt-top"></div></div>
     <div id="p-left" class="player"><div class="name" id="name-left"></div><div class="score" id="score-left">10000 分</div><div class="hand" id="hand-left"></div><div class="count" id="cnt-left"></div></div>
     <div id="centerPanel">
       <div id="fx"></div>
       <div id="centerTools">
         <button id="resetScoreBtn" class="btn-ghost btn-small">重置分數(10000)</button>
-      <button id="sfxToggle" class="btn-ghost btn-small">音效：開</button><button id="bgmToggle" class="btn-ghost btn-small">音樂：關</button></div>
+      </div>
       <div id="info">載入中…</div>
       <div id="last"></div>
       <div id="pile"></div>
@@ -580,7 +583,6 @@ html.immersive #stage{ height:var(--vh,100dvh); }
         <button id="passBtn" disabled>PASS</button>
         <button class="btn-ghost" id="hintBtn">提示</button>
         <button class="btn-ghost" id="dealBtn">重發</button>
-        <button class="btn-ghost" id="fsBtn">全螢幕</button>
       </div>
     </div>
     <div id="p-right" class="player"><div class="name" id="name-right"></div><div class="score" id="score-right">10000 分</div><div class="hand" id="hand-right"></div><div class="count" id="cnt-right"></div></div>
@@ -627,6 +629,13 @@ html.immersive #stage{ height:var(--vh,100dvh); }
 
 <script>
 "use strict";
+
+/* === 唯一名字工具 === */
+const FAMILY="王李張陳林吳黃蔡楊許鄭何郭羅高胡蕭潘江鍾曾賴呂孫魏葉阮邱彭顏謝宋唐馮邵韓曹邢顧";
+const GIVEN ="凱宇家豪志偉冠廷建宏志豪俊傑明哲冠霖俊宇承翰柏宇宗憲怡君欣怡雅婷雅雯佳蓉佩珊惠雯志玲美玲";
+function makeName(){ const fam=FAMILY[Math.floor(Math.random()*FAMILY.length)]; const g1=GIVEN[Math.floor(Math.random()*GIVEN.length)]; const g2=(Math.random()<0.45)?GIVEN[Math.floor(Math.random()*GIVEN.length)]:""; return fam+g1+g2; }
+function genUniqueNames(n, avoid=new Set()){ const used=new Set(avoid); const out=[]; let guard=0; while(out.length<n && guard<5000){ const name=makeName(); if(!used.has(name)){ used.add(name); out.push(name); } guard++; } return out; }
+
 /* ====== 音效系統（WebAudio） ====== */
 const SFX = (()=>{
   let enabled = true;
@@ -667,44 +676,35 @@ const SFX = (()=>{
 })();
 
 /* ====== BGM 系統 ====== */
-
 const BGM = (()=>{
-  let enabled = false;
-  const files = ['BGM1.mp3','BGM2.mp3','BGM3.mp3','BGM4.mp3','BGM5.mp3'];
-  let audio = null, last = -1;
-  const btn = document.getElementById('bgmToggle');
-  function ensure(){
+  const tracks = [
+    'https://assets.manus.im/big2-bgm/track1.mp3',
+    'https://assets.manus.im/big2-bgm/track2.mp3',
+    'https://assets.manus.im/big2-bgm/track3.mp3',
+    'https://assets.manus.im/big2-bgm/track4.mp3',
+    'https://assets.manus.im/big2-bgm/track5.mp3'
+  ];
+  let audio, enabled=false, idx=0;
+  function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } }
+  function init(){
     if(audio) return;
-    audio = new Audio(); audio.preload='auto'; audio.loop=false; audio.volume=0.35;
-    audio.addEventListener('ended', ()=>{ if(enabled) playNext(); });
-    audio.addEventListener('error', ()=>{ if(enabled) setTimeout(playNext, 150); });
+    audio = new Audio();
+    audio.volume = 0.3;
+    audio.addEventListener('ended', ()=>{ idx=(idx+1)%tracks.length; audio.src=tracks[idx]; audio.play().catch(()=>{}); });
   }
-  function pickNext(){
-    if(files.length===0) return null;
-    if(files.length===1){ last=0; return files[0]; }
-    let idx; do{ idx=Math.floor(Math.random()*files.length); }while(idx===last);
-    last=idx; return files[idx];
-  }
-  function playNext(){
-    if(!enabled) return;
-    ensure(); const src=pickNext(); if(!src) return;
-    audio.src=src; audio.currentTime=0;
-    audio.play().then(()=>{ btn.textContent='音樂：開'; }).catch(()=>{ btn.textContent='音樂：開（待播放）'; });
-  }
-  function toggle(){
-    enabled=!enabled; try{ localStorage.setItem('big2_bgm', enabled?'1':'0'); }catch(e){}
-    if(enabled) playNext(); else if(audio){ audio.pause(); }
-    btn.textContent = `音樂：${enabled?'開':'關'}`; return enabled;
-  }
-  function boot(){
-    try{ if(localStorage.getItem('big2_bgm')==='1'){ enabled=true; } }catch(e){}
-    btn.textContent = `音樂：${enabled?'開':'關'}`;
-    const once = ()=>{ if(enabled) playNext(); document.removeEventListener('pointerdown', once); document.removeEventListener('keydown', once); };
-    document.addEventListener('pointerdown', once, {once:true});
-    document.addEventListener('keydown', once, {once:true});
-  }
-  return { toggle, boot };
+  return {
+    toggle(){
+      init();
+      enabled = !enabled;
+      if(enabled){ audio.src=tracks[idx]; audio.play().catch(()=>{}); }
+      else{ audio.pause(); }
+      try{ localStorage.setItem('big2_bgm', enabled?'1':'0'); }catch(e){}
+      return enabled;
+    },
+    isEnabled(){ return enabled; }
+  };
 })();
+
 document.getElementById('sfxToggle').onclick=()=>{ document.getElementById('sfxToggle').textContent = `音效：${SFX.toggle()?'開':'關'}`; };
 document.getElementById('bgmToggle').onclick=()=>{ document.getElementById('bgmToggle').textContent = `音樂：${BGM.toggle()?'開':'關'}`; };
 
@@ -1066,6 +1066,21 @@ document.getElementById('autoBtn').onclick=()=>{
 
 /* 開局 */
 function deal(){
+
+/* 確保每局名字唯一（且不會叫「你」） */
+(function(){
+  try{
+    const others = genUniqueNames(3, new Set(["你"]));
+    if (typeof names === "undefined") window.names = ["你", ...others];
+    else names = ["你", ...others];
+    const map = ["right","top","left"];
+    map.forEach((pos,idx)=>{
+      const el=document.getElementById("name-"+pos);
+      if(el) el.innerText = names[idx+1];
+    });
+  }catch(e){}
+})();
+
   names=['你',randName(),randName(),randName()];
   document.getElementById('name-right').innerText=names[1]; document.getElementById('name-top').innerText=names[2]; document.getElementById('name-left').innerText=names[3];
   document.getElementById('pile').innerHTML=''; logBox.innerHTML=''; setLast(''); clearFX();
@@ -1089,91 +1104,7 @@ function deal(){
   }catch(e){}
   deal();
 })();
-// === 全螢幕控制 ===
-(function setupFullscreen(){
-  const fsBtn = document.getElementById('fsBtn');
-  const fsExitBtn = document.getElementById('fsExitBtn');
-  function inFS(){
-    return document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
-  }
-  function reqFS(){
-    const el = document.documentElement;
-    (el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);
-  }
-  function exitFS(){
-    (document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);
-  }
-  function updateFSBtn(){
-    if(fsBtn){
-      fsBtn.textContent = inFS() ? '退出全螢幕' : '全螢幕';
-    }
-    if(fsExitBtn){
-      fsExitBtn.style.display = inFS() ? 'block' : 'none';
-    }
-  }
-  fsBtn && fsBtn.addEventListener('click', ()=>{ inFS()? exitFS(): reqFS(); });
-  fsExitBtn && fsExitBtn.addEventListener('click', ()=> exitFS());
-  document.addEventListener('fullscreenchange', updateFSBtn);
-  document.addEventListener('webkitfullscreenchange', updateFSBtn);
-  document.addEventListener('msfullscreenchange', updateFSBtn);
-  updateFSBtn();
-})();
-
 </script>
-
-<script>
-(function fullscreenBridge(){
-  const fsBtn = document.getElementById('fsBtn');
-  const fsExitBtn = document.getElementById('fsExitBtn');
-  let immersive = false;
-
-  const inFS = () => document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
-
-  function sync(){
-    const on = inFS() || immersive;
-    if(fsBtn) fsBtn.textContent = on ? '退出全螢幕' : '全螢幕';
-    if(fsExitBtn) fsExitBtn.style.display = on ? 'block' : 'none';
-  }
-
-  function lockHeight(){
-    const set = () => {
-      const h = Math.round(window.visualViewport ? window.visualViewport.height : window.innerHeight);
-      document.documentElement.style.setProperty('--vh', h + 'px');
-    };
-    set();
-    window.visualViewport && visualViewport.addEventListener('resize', set);
-    window.addEventListener('resize', set);
-  }
-
-  function immersiveOn(){ immersive = true; document.documentElement.classList.add('immersive'); lockHeight(); sync(); }
-  function immersiveOff(){ immersive = false; document.documentElement.classList.remove('immersive'); sync(); }
-
-  function enterFS(){
-    const el = document.documentElement;
-    const req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
-    if(!req){ immersiveOn(); return; }
-    try{
-      const p = req.call(el);
-      if(p && p.catch) p.catch(()=>immersiveOn());
-      setTimeout(()=>{ if(!inFS()) immersiveOn(); }, 400);
-    }catch(e){ immersiveOn(); }
-  }
-  function exitFS(){
-    const ex = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
-    if(inFS() && ex){
-      try{ const p = ex.call(document); if(p && p.catch) p.catch(()=>immersiveOff()); }catch(e){ immersiveOff(); }
-    }else{
-      immersiveOff();
-    }
-  }
-
-  fsBtn && fsBtn.addEventListener('click', ()=> (inFS() || immersive) ? exitFS() : enterFS());
-  fsExitBtn && fsExitBtn.addEventListener('click', exitFS);
-  ['fullscreenchange','webkitfullscreenchange','msfullscreenchange'].forEach(ev => document.addEventListener(ev, sync));
-  sync();
-})();
-</script>
-
 </body>
 </html>
 
